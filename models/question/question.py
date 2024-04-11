@@ -1,5 +1,5 @@
 from typing import Set
-from sqlalchemy import Integer, String
+from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.question.question_schema import QuestionSchema
@@ -32,3 +32,12 @@ class Question(Base):
         session.commit()
         schema = QuestionSchema().dump(new_question)
         return schema
+
+    @staticmethod
+    def get_question(
+            session,
+            id: int
+    ) -> QuestionSchema:
+        query = select(Question).where(Question.id == id)
+        res = session.execute(query).first()
+        return res[0]

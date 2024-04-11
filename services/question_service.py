@@ -11,11 +11,20 @@ Session = create_db()
 SESSION = Session()
 
 
-@blp.route('', methods=["GET"])
-def get_question():
+@blp.route('<int:id>', methods=["GET"])
+@blp.response(200, QuestionSchema)
+def get_question(id):
     """ Returns question
     """
-    return 'Any questions?'
+    # TODO: Check if a user is logged and owns the question
+    try:
+
+        return Question.get_question(
+            SESSION,
+            id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))
 
 
 @blp.route('', methods=["POST"])
@@ -24,8 +33,7 @@ def get_question():
 def add_question(question_data):
     """ Creates a question and adds it to the database
     """
-    for a in question_data:
-        print(a)
+    # TODO: Check if a user is logged
     try:
         question = QuestionSchema().load(question_data)
         return Question.insert_question(
