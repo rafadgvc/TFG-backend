@@ -13,6 +13,12 @@ app.config["OPENAPI_SWAGGER_UI_PATH"] = "swagger"
 app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
 app.config["OPENAPI_SWAGGER_UI_VERSION"] = "3.52.0"
 app.config["OPENAPI_REDOC_PATH"] = "redoc"
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:4200'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
 api = Api(app)
 api.register_blueprint(base_item_blp)
 api.register_blueprint(question_blp)
