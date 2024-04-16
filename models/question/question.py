@@ -1,5 +1,7 @@
 from typing import Set
-from sqlalchemy import Integer, String, select, ForeignKey
+
+from flask import abort
+from sqlalchemy import Integer, String, select, ForeignKey, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.question.question_schema import QuestionSchema
@@ -31,7 +33,13 @@ class Question(Base):
             answer3: str = None,
             answer4: str = None
     ) -> QuestionSchema:
-        new_question = Question(title=title, subject_id=subject_id, answer1=answer1, answer2=answer2, answer3=answer3, answer4=answer4)
+        query = select(Subject).where(Subject.id == subject_id)
+        subject = session.execute(query).first()
+        if not subject:
+            abort(400, "La asignatura con el ID no ha sido encontrada.")
+
+        new_question = Question(title=title, subject_id=subject_id, answer1=answer1, answer2=answer2, answer3=answer3,
+                                answer4=answer4)
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)
@@ -45,3 +53,13 @@ class Question(Base):
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
         return res[0]
+
+    @staticmethod
+    def delete_question(
+            session,
+            id: int
+    ) -> None:
+        query = delete(Question).where(Question.id == id)
+        session.execute(query)
+        session.commit()
+

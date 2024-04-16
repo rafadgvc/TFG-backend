@@ -41,3 +41,19 @@ def add_subject(subject_data):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('<int:id>', methods=["DELETE"])
+@blp.response(204)
+def delete_question(id):
+    """ Deletes subject
+    """
+    # TODO: Check if a user is logged and owns the subject
+    try:
+
+        Subject.delete_subject(
+            SESSION,
+            id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))

@@ -47,3 +47,19 @@ def add_question(question_data):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('<int:id>', methods=["DELETE"])
+@blp.response(204)
+def delete_question(id):
+    """ Deletes question
+    """
+    # TODO: Check if a user is logged and owns the question
+    try:
+
+        Question.delete_question(
+            SESSION,
+            id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))

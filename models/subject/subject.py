@@ -1,5 +1,5 @@
 from typing import Set
-from sqlalchemy import Integer, String, select
+from sqlalchemy import Integer, String, select, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.subject.subject_schema import SubjectSchema
@@ -40,3 +40,16 @@ class Subject(Base):
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
         return res[0]
+
+    @staticmethod
+    def delete_subject(
+            session,
+            id: int
+    ) -> None:
+        from models.question.question import Question
+        query = delete(Question).where(Question.subject_id == id)
+        session.execute(query)
+        session.commit()
+        query = delete(Subject).where(Subject.id == id)
+        session.execute(query)
+        session.commit()
