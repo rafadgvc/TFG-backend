@@ -1,6 +1,5 @@
 from flask import Flask
 from flask_smorest import Api
-from services.base_item_service import blp as base_item_blp
 from services.question_service import blp as question_blp
 from services.subject_service import blp as subject_blp
 
