@@ -7,4 +7,5 @@ class QuestionSchema(Schema):
     answer2 = fields.String()
     answer3 = fields.String()
     answer4 = fields.String()
+    subject_id = fields.Integer()
 

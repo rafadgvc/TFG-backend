@@ -1,8 +1,9 @@
 from typing import Set
-from sqlalchemy import Integer, String, select
+from sqlalchemy import Integer, String, select, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.question.question_schema import QuestionSchema
+from models.subject.subject import Subject
 
 
 class Question(Base):
@@ -14,6 +15,8 @@ class Question(Base):
     answer2: Mapped[str] = mapped_column(String, nullable=False)
     answer3: Mapped[str] = mapped_column(String)
     answer4: Mapped[str] = mapped_column(String)
+    subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
+    subject: Mapped["Subject"] = relationship(back_populates="questions")
 
     def __repr__(self):
      return "<Question(id='%s', title='%s')>" % (self.id, self.title)
@@ -22,12 +25,13 @@ class Question(Base):
     def insert_question(
             session,
             title: str,
+            subject_id: int,
             answer1: str,
             answer2: str,
             answer3: str = None,
             answer4: str = None
     ) -> QuestionSchema:
-        new_question = Question(title=title, answer1=answer1, answer2=answer2, answer3=answer3, answer4=answer4)
+        new_question = Question(title=title, subject_id=subject_id, answer1=answer1, answer2=answer2, answer3=answer3, answer4=answer4)
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)

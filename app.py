@@ -2,7 +2,7 @@ from flask import Flask
 from flask_smorest import Api
 from services.base_item_service import blp as base_item_blp
 from services.question_service import blp as question_blp
-from db.versions.db import create_db
+from services.subject_service import blp as subject_blp
 
 app = Flask(__name__)
 app.config["API_TITLE"] = "QuestionsAPI"
@@ -21,6 +21,7 @@ def add_cors_headers(response):
     return response
 api = Api(app)
 api.register_blueprint(base_item_blp)
+api.register_blueprint(subject_blp)
 api.register_blueprint(question_blp)
 
 
