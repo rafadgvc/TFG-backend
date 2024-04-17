@@ -1,5 +1,4 @@
-from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete
+from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
@@ -8,7 +7,7 @@ from secrets import PASSWORD_SALT
 import bcrypt
 
 from db.versions.db import Base
-from models.user.user_schema import UserRestrictedSchema, FullUserSchema
+from models.user.user_schema import FullUserSchema
 
 
 class User(Base):
@@ -22,7 +21,14 @@ class User(Base):
 
     # Relaciones
     subjects: Mapped[Set["Subject"]] = relationship(
-        back_populates="user",
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+    # Relaciones
+    questions: Mapped[Set["Question"]] = relationship(
+        back_populates="created",
         cascade="all, delete-orphan",
         passive_deletes=True
     )

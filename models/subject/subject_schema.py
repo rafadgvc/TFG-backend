@@ -2,6 +2,9 @@ from marshmallow import Schema, fields
 
 
 class SubjectSchema(Schema):
-    user_id = fields.Integer()
+    id = fields.Integer()
+    name = fields.String()
+
+class BasicSubjectSchema(Schema):
     name = fields.String()
 

@@ -2,9 +2,6 @@ from models.question.question_schema import QuestionSchema
 from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
-import requests
-from excepts import NoDataFound
-from sqlalchemy.exc import IntegrityError
 
 blp = Blueprint("Question", __name__, url_prefix="/question")
 Session = create_db()
@@ -33,7 +30,6 @@ def get_question(id):
 def add_question(question_data):
     """ Creates a question and adds it to the database
     """
-    # TODO: Check if a user is logged
     try:
         question = QuestionSchema().load(question_data)
         return Question.insert_question(
