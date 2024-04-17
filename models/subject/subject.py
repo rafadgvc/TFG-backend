@@ -1,8 +1,9 @@
 from typing import Set
-from sqlalchemy import Integer, String, select, delete
+from sqlalchemy import Integer, String, select, delete, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.subject.subject_schema import SubjectSchema
+from models.user.user import User
 
 
 class Subject(Base):
@@ -10,13 +11,17 @@ class Subject(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    # user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
+
+    # Relaciones
+    user: Mapped["User"] = relationship(back_populates="subjects")
     questions: Mapped[Set["Question"]] = relationship(
         back_populates="subject",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-
+    #
     def __repr__(self):
      return "<Subject(id='%s', name='%s')>" % (self.id, self.name)
 

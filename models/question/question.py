@@ -1,5 +1,3 @@
-from typing import Set
-
 from flask import abort
 from sqlalchemy import Integer, String, select, ForeignKey, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
