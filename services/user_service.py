@@ -3,7 +3,8 @@ from db.versions.db import create_db
 from models.user.user import User
 from models.user.user_schema import UserRestrictedSchema, UserLoginSchema, UserSignUpSchema, FullUserSchema, AccessTokenSchema
 from flask import jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies, \
+    unset_jwt_cookies
 import bcrypt
 
 
@@ -48,6 +49,8 @@ def add_user(user_data):
 @blp.arguments(UserLoginSchema)
 @blp.response(200, AccessTokenSchema)
 def login(user_data):
+    """ Logs in and sets an access token in the browser
+    """
     email = user_data.get('email', None)
     password = user_data.get('password', None)
     if not email or not password:
@@ -63,4 +66,13 @@ def login(user_data):
     # Establecer la cookie de acceso
     resp = jsonify(response)
     set_access_cookies(resp, access_token)
+    return resp, 200
+
+@blp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """ Logs out the current user and unsets the token
+    """
+    resp = jsonify({"msg": "Logout exitoso"})
+    unset_jwt_cookies(resp)
     return resp, 200
