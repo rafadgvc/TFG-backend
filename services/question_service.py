@@ -1,7 +1,10 @@
-from models.question.question_schema import QuestionSchema
+from flask_jwt_extended import jwt_required
+
+from models.question.question_schema import QuestionSchema, QuestionListSchema
 from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
+from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Question", __name__, url_prefix="/question")
 Session = create_db()
@@ -9,6 +12,7 @@ SESSION = Session()
 
 
 @blp.route('<int:id>', methods=["GET"])
+@jwt_required()
 @blp.response(200, QuestionSchema)
 def get_question(id):
     """ Returns question
@@ -25,6 +29,7 @@ def get_question(id):
 
 
 @blp.route('', methods=["POST"])
+@jwt_required()
 @blp.arguments(QuestionSchema)
 @blp.response(200, QuestionSchema)
 def add_question(question_data):
@@ -46,6 +51,7 @@ def add_question(question_data):
 
 
 @blp.route('<int:id>', methods=["DELETE"])
+@jwt_required()
 @blp.response(204)
 def delete_question(id):
     """ Deletes question
@@ -59,3 +65,17 @@ def delete_question(id):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('/user-questions', methods=["GET"])
+@jwt_required()
+@blp.arguments(PaginationSchema, location='query')
+@blp.response(200, QuestionListSchema)
+def get_user_questions(pagination_params):
+    """ Returns questions created by the current user
+    """
+    return Question.get_user_questions(
+        SESSION,
+        limit=pagination_params.get('limit', None),
+        offset=pagination_params.get('offset', 0),
+    )

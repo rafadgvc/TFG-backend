@@ -4,9 +4,9 @@ from flask import abort
 from sqlalchemy import Integer, String, select, delete, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
-from models.subject.subject_schema import SubjectSchema
+from models.subject.subject_schema import SubjectSchema, SubjectListSchema
 from models.user.user import User
-from utils import get_current_user_id
+from utils.utils import get_current_user_id
 
 
 class Subject(Base):
@@ -74,3 +74,16 @@ class Subject(Base):
         query = delete(Subject).where(Subject.id == id)
         session.execute(query)
         session.commit()
+
+    @staticmethod
+    def get_user_subjects(session, limit: int = None, offset: int = 0) -> SubjectListSchema:
+        current_user_id = get_current_user_id()
+        query = select(Subject).where(Subject.created_by == current_user_id).offset(offset)
+        if limit:
+            query = query.limit(limit)
+        items = session.execute(query).scalars().all()
+
+        total = session.query(Subject).count()
+
+        schema = SubjectListSchema()
+        return schema.dump({"items": items, "total": total})

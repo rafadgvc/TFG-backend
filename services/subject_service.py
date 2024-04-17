@@ -2,7 +2,8 @@ from flask_jwt_extended import jwt_required
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.subject.subject import Subject
-from models.subject.subject_schema import SubjectSchema, BasicSubjectSchema
+from models.subject.subject_schema import SubjectSchema, BasicSubjectSchema, SubjectListSchema
+from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Subject", __name__, url_prefix="/subject")
 Session = create_db()
@@ -18,6 +19,20 @@ def get_subject(id):
     return Subject.get_subject(
         SESSION,
         id=id
+    )
+
+
+@blp.route('/user-subjects', methods=["GET"])
+@jwt_required()
+@blp.arguments(PaginationSchema, location='query')
+@blp.response(200, SubjectListSchema)
+def get_user_subject(pagination_params):
+    """ Returns subjects created by the current user
+    """
+    return Subject.get_user_subjects(
+        SESSION,
+        limit=pagination_params.get('limit', None),
+        offset=pagination_params.get('offset', 0),
     )
 
 

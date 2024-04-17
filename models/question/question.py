@@ -3,10 +3,10 @@ from sqlalchemy import Integer, String, select, ForeignKey, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.versions.db import Base
-from models.question.question_schema import QuestionSchema
+from models.question.question_schema import QuestionSchema, QuestionListSchema
 from models.subject.subject import Subject
 from models.user.user import User
-from utils import get_current_user_id
+from utils.utils import get_current_user_id
 
 
 class Question(Base):
@@ -84,4 +84,17 @@ class Question(Base):
         query = delete(Question).where(Question.id == id)
         session.execute(query)
         session.commit()
+
+    @staticmethod
+    def get_user_questions(session, limit: int = None, offset: int = 0) -> QuestionListSchema:
+        current_user_id = get_current_user_id()
+        query = select(Question).where(Question.created_by == current_user_id).offset(offset)
+        if limit:
+            query = query.limit(limit)
+        items = session.execute(query).scalars().all()
+
+        total = session.query(Subject).count()
+
+        schema = QuestionListSchema()
+        return schema.dump({"items": items, "total": total})
 
