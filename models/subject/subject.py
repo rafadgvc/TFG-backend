@@ -1,4 +1,6 @@
 from typing import Set
+
+from flask import abort
 from sqlalchemy import Integer, String, select, delete, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
@@ -40,10 +42,13 @@ class Subject(Base):
     @staticmethod
     def get_subject(
             session,
-            id: int
+            id: int,
+            user_id: int,
     ) -> SubjectSchema:
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
+        if res[0].user_id != user_id:
+            abort(401, "No tienes acceso a este recurso.")
         return res[0]
 
     @staticmethod

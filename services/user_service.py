@@ -1,9 +1,11 @@
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
-from models.subject.subject import Subject
-from models.subject.subject_schema import SubjectSchema
 from models.user.user import User
-from models.user.user_schema import UserRestrictedSchema, UserSignUpSchema, FullUserSchema
+from models.user.user_schema import UserRestrictedSchema, UserLoginSchema, UserSignUpSchema, FullUserSchema, AccessTokenSchema
+from flask import jsonify, request
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies
+import bcrypt
+
 
 blp = Blueprint("User", __name__, url_prefix="/user")
 Session = create_db()
@@ -40,3 +42,25 @@ def add_user(user_data):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('/login', methods=['POST'])
+@blp.arguments(UserLoginSchema)
+@blp.response(200, AccessTokenSchema)
+def login(user_data):
+    email = user_data.get('email', None)
+    password = user_data.get('password', None)
+    if not email or not password:
+        return jsonify({"msg": "Falta el email o la contraseña"}), 400
+
+    user = User.get_user_by_email(SESSION, email)
+    if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        return jsonify({"msg": "Credenciales incorrectas"}), 401
+
+    access_token = create_access_token(identity=user.id)
+    response = AccessTokenSchema().dump({"access_token": access_token})
+
+    # Establecer la cookie de acceso
+    resp = jsonify(response)
+    set_access_cookies(resp, access_token)
+    return resp, 200

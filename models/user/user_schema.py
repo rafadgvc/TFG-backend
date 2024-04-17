@@ -20,3 +20,10 @@ class UserSignUpSchema(Schema):
     password = fields.String()
 
 
+class UserLoginSchema(Schema):
+    email = fields.String()
+    password = fields.String()
+
+
+class AccessTokenSchema(Schema):
+    access_token = fields.String()

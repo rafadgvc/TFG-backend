@@ -1,7 +1,9 @@
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.subject.subject import Subject
 from models.subject.subject_schema import SubjectSchema
+from utils import get_current_user_id
 
 blp = Blueprint("Subject", __name__, url_prefix="/subject")
 Session = create_db()
@@ -9,16 +11,17 @@ SESSION = Session()
 
 
 @blp.route('<int:id>', methods=["GET"])
+@jwt_required()
 @blp.response(200, SubjectSchema)
 def get_subject(id):
     """ Returns subject
     """
-    # TODO: Check if a user is logged and owns the subject
+    current_user_id = get_jwt_identity()
     try:
-
         return Subject.get_subject(
             SESSION,
-            id=id
+            id=id,
+            user_id=current_user_id
         )
     except Exception as e:
         abort(400, message=str(e))
