@@ -35,6 +35,11 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+    levels: Mapped[Set["Level"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     def __repr__(self):
      return "<User(id='%s', email='%s')>" % (self.id, self.email)

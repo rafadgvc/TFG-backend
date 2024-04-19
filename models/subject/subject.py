@@ -23,6 +23,11 @@ class Subject(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+    levels: Mapped[Set["Level"]] = relationship(
+        back_populates="subject",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
     #
     def __repr__(self):
      return "<Subject(id='%s', name='%s')>" % (self.id, self.name)

@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
 from db.versions.db import Base
+from models.level.level import Level
 from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
@@ -17,10 +18,12 @@ class Question(Base):
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     title: Mapped[str] = mapped_column(String, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
+    level_id: Mapped[int] = mapped_column(Integer, ForeignKey("level.id"))
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="questions")
     subject: Mapped["Subject"] = relationship(back_populates="questions")
+    level: Mapped["Level"] = relationship(back_populates="questions")
     answers: Mapped[Set["Answer"]] = relationship(
         back_populates="question",
         cascade="all, delete-orphan",
@@ -35,6 +38,7 @@ class Question(Base):
             session,
             title: str,
             subject_id: int,
+            level_id: int
     ) -> QuestionSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
@@ -48,7 +52,7 @@ class Question(Base):
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
-        new_question = Question(title=title, subject_id=subject_id, created_by=user_id)
+        new_question = Question(title=title, subject_id=subject_id, created_by=user_id, level_id=level_id)
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)

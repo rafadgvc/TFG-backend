@@ -41,7 +41,8 @@ def add_question(question_data):
         return Question.insert_question(
             session=SESSION,
             title=question['title'],
-            subject_id=question['subject_id']
+            subject_id=question['subject_id'],
+            level_id=question['level_id']
         )
     except Exception as e:
         abort(400, message=str(e))
