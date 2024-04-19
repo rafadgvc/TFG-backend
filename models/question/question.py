@@ -17,6 +17,8 @@ class Question(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     title: Mapped[str] = mapped_column(String, nullable=False)
+    difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
+    time: Mapped[int] = mapped_column(Integer, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
     level_id: Mapped[int] = mapped_column(Integer, ForeignKey("level.id"))
 
@@ -38,7 +40,9 @@ class Question(Base):
             session,
             title: str,
             subject_id: int,
-            level_id: int
+            level_id: int,
+            difficulty: int,
+            time: int,
     ) -> QuestionSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
@@ -52,7 +56,14 @@ class Question(Base):
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
-        new_question = Question(title=title, subject_id=subject_id, created_by=user_id, level_id=level_id)
+        new_question = Question(
+            title=title,
+            subject_id=subject_id,
+            created_by=user_id,
+            level_id=level_id,
+            time=time,
+            difficulty=difficulty
+        )
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)

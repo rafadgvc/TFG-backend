@@ -40,9 +40,11 @@ def add_question(question_data):
         question = QuestionSchema().load(question_data)
         return Question.insert_question(
             session=SESSION,
-            title=question['title'],
-            subject_id=question['subject_id'],
-            level_id=question['level_id']
+            title=question.get('title'),
+            subject_id=question.get('subject_id'),
+            level_id=question.get('level_id'),
+            time=question.get('time'),
+            difficulty=question.get('difficulty'),
         )
     except Exception as e:
         abort(400, message=str(e))
