@@ -35,9 +35,9 @@ def add_cors_headers(response):
 api = Api(app)
 api.register_blueprint(user_blp)
 api.register_blueprint(subject_blp)
+api.register_blueprint(level_blp)
 api.register_blueprint(question_blp)
 api.register_blueprint(answer_blp)
-api.register_blueprint(level_blp)
 
 
 if __name__ == '__main__':
