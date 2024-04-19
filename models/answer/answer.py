@@ -6,7 +6,6 @@ from db.versions.db import Base
 from models.answer.answer_schema import AnswerSchema, AnswerListSchema
 from models.question import Question
 from models.question.question_schema import QuestionSchema, QuestionListSchema
-from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
 

@@ -2,8 +2,6 @@ from flask_jwt_extended import jwt_required
 
 from models.answer.answer import Answer
 from models.answer.answer_schema import AnswerSchema, AnswerListSchema, AnswerReducedSchema
-from models.question.question_schema import QuestionSchema, QuestionListSchema
-from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from utils.common_schema import PaginationSchema

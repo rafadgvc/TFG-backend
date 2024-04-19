@@ -1,11 +1,11 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, and_
+from sqlalchemy import Integer, String, select, ForeignKey, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
 from db.versions.db import Base
 from models.level.level_schema import LevelSchema, LevelListSchema
-from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
+from models.question.question_schema import QuestionListSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id

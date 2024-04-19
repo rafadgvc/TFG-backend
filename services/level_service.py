@@ -1,14 +1,8 @@
 from flask_jwt_extended import jwt_required
-
-from models.answer.answer import Answer
-from models.answer.answer_schema import AnswerSchema, AnswerListSchema, AnswerReducedSchema
 from models.level.level import Level
 from models.level.level_schema import LevelSchema, LevelReducedSchema
-from models.question.question_schema import QuestionSchema, QuestionListSchema
-from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
-from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Level", __name__, url_prefix="/level")
 Session = create_db()
