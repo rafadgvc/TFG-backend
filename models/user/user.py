@@ -25,9 +25,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-
-    # Relaciones
     questions: Mapped[Set["Question"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    answers: Mapped[Set["Answer"]] = relationship(
         back_populates="created",
         cascade="all, delete-orphan",
         passive_deletes=True

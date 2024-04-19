@@ -4,6 +4,7 @@ from flask_smorest import Api
 from services.question_service import blp as question_blp
 from services.subject_service import blp as subject_blp
 from services.user_service import blp as user_blp
+from services.answer_service import blp as answer_blp
 from secrets import JWT_SECRET_KEY
 
 app = Flask(__name__)
@@ -34,6 +35,7 @@ api = Api(app)
 api.register_blueprint(user_blp)
 api.register_blueprint(subject_blp)
 api.register_blueprint(question_blp)
+api.register_blueprint(answer_blp)
 
 
 if __name__ == '__main__':

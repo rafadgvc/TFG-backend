@@ -1,9 +1,10 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete
+from sqlalchemy import Integer, String, select, ForeignKey, delete, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Set
 
 from db.versions.db import Base
-from models.question.question_schema import QuestionSchema, QuestionListSchema
+from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
@@ -15,15 +16,16 @@ class Question(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     title: Mapped[str] = mapped_column(String, nullable=False)
-    answer1: Mapped[str] = mapped_column(String, nullable=False)
-    answer2: Mapped[str] = mapped_column(String, nullable=False)
-    answer3: Mapped[str] = mapped_column(String)
-    answer4: Mapped[str] = mapped_column(String)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="questions")
     subject: Mapped["Subject"] = relationship(back_populates="questions")
+    answers: Mapped[Set["Answer"]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     def __repr__(self):
      return "<Question(id='%s', title='%s')>" % (self.id, self.title)
@@ -33,23 +35,20 @@ class Question(Base):
             session,
             title: str,
             subject_id: int,
-            answer1: str,
-            answer2: str,
-            answer3: str = None,
-            answer4: str = None
     ) -> QuestionSchema:
-        query = select(Subject).where(Subject.id == subject_id)
+        user_id = get_current_user_id()
+        query = select(Subject).where(
+            and_(
+            Subject.id == subject_id,
+            Subject.created_by == user_id
+            )
+        )
         subject = session.execute(query).first()
 
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
-        user_id = get_current_user_id()
-        if subject.created_by != user_id:
-            abort(401, "No tienes acceso a este recurso.")
-
-        new_question = Question(title=title, subject_id=subject_id, answer1=answer1, answer2=answer2, answer3=answer3,
-                                answer4=answer4, created_by=user_id)
+        new_question = Question(title=title, subject_id=subject_id, created_by=user_id)
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)
@@ -93,8 +92,35 @@ class Question(Base):
             query = query.limit(limit)
         items = session.execute(query).scalars().all()
 
-        total = session.query(Subject).count()
+        total = session.query(Question).count()
 
         schema = QuestionListSchema()
         return schema.dump({"items": items, "total": total})
+
+    @staticmethod
+    def get_full_question(
+            session,
+            id: int
+    ) -> FullQuestionSchema:
+        from models.answer.answer import Answer
+        from models.answer.answer_schema import AnswerListSchema
+
+        query = select(Question).where(Question.id == id)
+        res = session.execute(query).first()
+
+        user_id = get_current_user_id()
+        if res[0].created_by != user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        current_user_id = get_current_user_id()
+        query = select(Answer).where(Answer.question_id == id)
+        items = session.execute(query).scalars().all()
+
+        total = session.query(Answer).count()
+
+        schema = FullQuestionSchema()
+
+        answers = AnswerListSchema()
+        answers = answers.dump({"items": items, "total": total})
+        return schema.dump({"id": res[0].id, "title": res[0].title, "subject_id": res[0].subject_id, "answers": answers})
 

@@ -1,13 +1,15 @@
 from marshmallow import Schema, fields, post_dump
 
+from models.answer.answer_schema import AnswerSchema, AnswerListSchema
+
 
 class QuestionSchema(Schema):
     id = fields.Integer()
     title = fields.String()
-    answer1 = fields.String()
-    answer2 = fields.String()
-    answer3 = fields.String()
-    answer4 = fields.String()
+    subject_id = fields.Integer()
+
+class QuestionReducedSchema(Schema):
+    title = fields.String()
     subject_id = fields.Integer()
 
 class QuestionListSchema(Schema):
@@ -18,5 +20,13 @@ class QuestionListSchema(Schema):
     def add_total_questions(self, data, many, **kwargs):
         data['total'] = len(data['items'])
         return data
+
+class FullQuestionSchema(Schema):
+    id = fields.Integer()
+    title = fields.String()
+    subject_id = fields.Integer()
+    answers = fields.Nested(AnswerListSchema)
+
+
 
 
