@@ -81,7 +81,7 @@ def get_user_questions(pagination_params):
         offset=pagination_params.get('offset', 0),
     )
 
-@blp.route('/full-question/<int:id>', methods=["GET"])
+@blp.route('/full/<int:id>', methods=["GET"])
 @jwt_required()
 @blp.response(200, FullQuestionSchema)
 def get_full_question(id):

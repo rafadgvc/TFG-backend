@@ -3,6 +3,7 @@ from models.level.level import Level
 from models.level.level_schema import LevelSchema, LevelReducedSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
+from models.question.question_schema import FullQuestionListSchema
 
 blp = Blueprint("Level", __name__, url_prefix="/level")
 Session = create_db()
@@ -42,3 +43,14 @@ def add_level(level_data):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+@blp.route('/full/<int:id>', methods=["GET"])
+@jwt_required()
+@blp.response(200, FullQuestionListSchema)
+def get_questions_of_level(id):
+    """ Returns the list of questions that a level has
+    """
+    return Level.get_questions_of_level(
+        session=SESSION,
+        level_id=id,
+        )

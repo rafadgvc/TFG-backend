@@ -39,6 +39,15 @@ class FullQuestionSchema(Schema):
     type = fields.String()
     answers = fields.Nested(AnswerListSchema)
 
+class FullQuestionListSchema(Schema):
+    items = fields.List(fields.Nested(FullQuestionSchema))
+    total = fields.Integer()
+
+    @post_dump(pass_many=True)
+    def add_total_questions(self, data, many, **kwargs):
+        data['total'] = len(data['items'])
+        return data
+
 
 
 

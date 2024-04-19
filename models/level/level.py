@@ -5,7 +5,8 @@ from typing import Set
 
 from db.versions.db import Base
 from models.level.level_schema import LevelSchema, LevelListSchema
-from models.question.question_schema import QuestionListSchema
+from models.question.question_schema import QuestionListSchema, FullQuestionListSchema, FullQuestionSchema, \
+    QuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
@@ -108,4 +109,39 @@ class Level(Base):
         schema = LevelListSchema()
         return schema.dump({"items": items, "total": total})
 
+    @staticmethod
+    def get_questions_of_level(session, level_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
+        from models.question.question import Question
+        from models.answer.answer import Answer
+        current_user_id = get_current_user_id()
+        query = select(Question).distinct().join(Answer).where(
+            and_(
+                Question.created_by == current_user_id,
+                Question.level_id == level_id
+            )
+        ).offset(offset)
+        if limit:
+            query = query.limit(limit)
+        items = session.execute(query).scalars().all()
 
+        total = session.query(Level).count()
+
+        questions_with_responses = []
+
+        for question in items:
+            answers = question.answers
+            total_answers = len(answers)
+            question_dict = {
+                "id": question.id,
+                "title": question.title,
+                "subject_id": question.subject_id,
+                "level_id": question.level_id,
+                "time": question.time,
+                "difficulty": question.difficulty,
+                "type": question.type,
+                "answers": {"items": answers, "total": total_answers}
+            }
+            questions_with_responses.append(question_dict)
+
+        schema = FullQuestionListSchema()
+        return schema.dump({"items": questions_with_responses, "total": total})
