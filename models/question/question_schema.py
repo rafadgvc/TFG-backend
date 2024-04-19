@@ -10,6 +10,7 @@ class QuestionSchema(Schema):
     level_id = fields.Integer()
     time = fields.Integer()
     difficulty = fields.Integer()
+    type = fields.String()
 
 class QuestionReducedSchema(Schema):
     title = fields.String()
@@ -17,6 +18,7 @@ class QuestionReducedSchema(Schema):
     level_id = fields.Integer()
     time = fields.Integer()
     difficulty = fields.Integer()
+    type = fields.String()
 
 class QuestionListSchema(Schema):
     items = fields.List(fields.Nested(QuestionSchema))
@@ -34,6 +36,7 @@ class FullQuestionSchema(Schema):
     level_id = fields.Integer()
     time = fields.Integer()
     difficulty = fields.Integer()
+    type = fields.String()
     answers = fields.Nested(AnswerListSchema)
 
 

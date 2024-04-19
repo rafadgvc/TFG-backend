@@ -45,6 +45,7 @@ def add_question(question_data):
             level_id=question.get('level_id'),
             time=question.get('time'),
             difficulty=question.get('difficulty'),
+            type=question.get('type'),
         )
     except Exception as e:
         abort(400, message=str(e))

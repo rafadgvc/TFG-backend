@@ -1,5 +1,8 @@
+from enum import Enum
+
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, and_
+from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
@@ -9,6 +12,11 @@ from models.question.question_schema import QuestionSchema, QuestionListSchema, 
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
+
+class QuestionType(Enum):
+    TEST = "test"
+    DEVELOPMENT = "development"
+    MULTIPLE = "multiple"
 
 
 class Question(Base):
@@ -21,6 +29,7 @@ class Question(Base):
     time: Mapped[int] = mapped_column(Integer, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
     level_id: Mapped[int] = mapped_column(Integer, ForeignKey("level.id"))
+    type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'development', 'multiple')"), nullable=False)
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="questions")
@@ -43,6 +52,7 @@ class Question(Base):
             level_id: int,
             difficulty: int,
             time: int,
+            type: str,
     ) -> QuestionSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
@@ -62,7 +72,8 @@ class Question(Base):
             created_by=user_id,
             level_id=level_id,
             time=time,
-            difficulty=difficulty
+            difficulty=difficulty,
+            type=type.lower()
         )
         session.add(new_question)
         session.commit()
