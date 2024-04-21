@@ -28,7 +28,7 @@ def get_user(id):
         abort(400, message=str(e))
 
 
-@blp.route('', methods=["POST"])
+@blp.route('/signup', methods=["POST"])
 @blp.arguments(UserSignUpSchema)
 @blp.response(200, FullUserSchema)
 def add_user(user_data):
@@ -61,7 +61,7 @@ def login(user_data):
         return jsonify({"msg": "Credenciales incorrectas"}), 401
 
     access_token = create_access_token(identity=user.id)
-    response = AccessTokenSchema().dump({"access_token": access_token})
+    response = AccessTokenSchema().dump({"access_token_cookie": access_token})
 
     # Establecer la cookie de acceso
     resp = jsonify(response)
