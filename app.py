@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_smorest import Api
@@ -21,6 +23,7 @@ app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=2)
 jwt = JWTManager(app)
 
 
