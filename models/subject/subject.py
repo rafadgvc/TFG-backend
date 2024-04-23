@@ -1,7 +1,8 @@
 from typing import Set
 
 from flask import abort
-from sqlalchemy import Integer, String, select, delete, ForeignKey
+from sqlalchemy import Integer, String, select, delete, ForeignKey, func, or_, distinct
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
 from models.subject.subject_schema import SubjectSchema, SubjectListSchema
@@ -31,6 +32,23 @@ class Subject(Base):
     #
     def __repr__(self):
      return "<Subject(id='%s', name='%s')>" % (self.id, self.name)
+
+    @hybrid_property
+    def question_number(self):
+        """
+        Calcula el número total de preguntas para esta asignatura.
+        """
+        return sum(len(question_set) for question_set in [self.questions, self.levels])
+
+    @question_number.expression
+    def question_number(cls):
+        """
+        Expresión SQLAlchemy para calcular el número total de preguntas para esta asignatura.
+        """
+
+        from models.question import Question
+        return select([func.sum(func.count(Question.id))]).where(
+            or_(Question.subject_id == cls.id, Question.level_id == cls.id)).label("question_number")
 
     @staticmethod
     def insert_subject(
@@ -82,13 +100,29 @@ class Subject(Base):
 
     @staticmethod
     def get_user_subjects(session, limit: int = None, offset: int = 0) -> SubjectListSchema:
+        from models.question.question import Question
         current_user_id = get_current_user_id()
-        query = select(Subject).where(Subject.created_by == current_user_id).offset(offset)
+        query = session.query(Subject).filter(Subject.created_by == current_user_id).offset(offset)
+
+        # Subconsulta para obtener el número total de preguntas por asignatura
+        question_number_subquery = session.query(func.count(Question.id)). \
+            filter(Question.subject_id == Subject.id). \
+            label("question_number")
+
+        # Unimos la subconsulta para obtener el número total de preguntas por asignatura
+        query = query.add_columns(question_number_subquery)
+
         if limit:
             query = query.limit(limit)
-        items = session.execute(query).scalars().all()
 
-        total = session.query(Subject).count()
+        items = []
+        total = 0
+        for item, question_number in query:
+            item_dict = item.__dict__
+            item_dict['question_number'] = question_number or 0  # Si no hay preguntas, establece el valor en 0
+            items.append(item_dict)
+            total += 1
 
         schema = SubjectListSchema()
         return schema.dump({"items": items, "total": total})
+
