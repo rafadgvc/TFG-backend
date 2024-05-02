@@ -1,7 +1,7 @@
 from typing import Set
 
 from flask import abort
-from sqlalchemy import Integer, String, select, delete, ForeignKey, func, or_, distinct
+from sqlalchemy import Integer, String, select, delete, ForeignKey, func, or_, distinct, null
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
@@ -55,9 +55,17 @@ class Subject(Base):
             session,
             name: str,
     ) -> SubjectSchema:
+        from models.node.node import Node
         new_subject = Subject(created_by=get_current_user_id(), name=name)
 
         session.add(new_subject)
+        session.commit()
+        new_node = Node(
+            name=name,
+            subject_id=new_subject.id,
+            created_by=new_subject.created_by
+        )
+        session.add(new_node)
         session.commit()
 
         schema = SubjectSchema().dump(new_subject)
