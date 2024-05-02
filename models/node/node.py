@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
 from db.versions.db import Base
-from models.level.level_schema import LevelSchema, LevelListSchema
+from models.node.node_schema import NodeSchema, NodeListSchema
 from models.question.question_schema import QuestionListSchema, FullQuestionListSchema, FullQuestionSchema, \
     QuestionSchema
 from models.subject.subject import Subject
@@ -12,41 +12,41 @@ from models.user.user import User
 from utils.utils import get_current_user_id
 
 
-class Level(Base):
-    __tablename__ = "level"
+class Node(Base):
+    __tablename__ = "node"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("level.id"), nullable=True)
+    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("node.id"), nullable=True)
 
     # Relaciones
-    created: Mapped["User"] = relationship(back_populates="levels")
-    subject: Mapped["Subject"] = relationship(back_populates="levels")
-    parent: Mapped["Level"] = relationship("Level", back_populates="children", remote_side=[id])
-    children: Mapped[Set["Level"]] = relationship(
-        "Level",
+    created: Mapped["User"] = relationship(back_populates="nodes")
+    subject: Mapped["Subject"] = relationship(back_populates="nodes")
+    parent: Mapped["Node"] = relationship("Node", back_populates="children", remote_side=[id])
+    children: Mapped[Set["Node"]] = relationship(
+        "Node",
         back_populates="parent",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
     questions: Mapped[Set["Question"]] = relationship(
-        back_populates="level",
+        back_populates="node",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
 
     def __repr__(self):
-     return "<Level(id='%s', name='%s')>" % (self.id, self.name)
+     return "<Node(id='%s', name='%s')>" % (self.id, self.name)
 
     @staticmethod
-    def insert_level(
+    def insert_node(
             session,
             name: str,
             subject_id: int,
             parent_id: int = None
-    ) -> LevelSchema:
+    ) -> NodeSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -60,29 +60,29 @@ class Level(Base):
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
         if parent_id is not None:
-            query = select(Level).where(
+            query = select(Node).where(
                 and_(
-                    Level.id == parent_id,
-                    Level.created_by == user_id
+                    Node.id == parent_id,
+                    Node.created_by == user_id
                 )
             )
             parent = session.execute(query).first()
 
             if not parent:
-                abort(400, "El nivel superior con el ID no ha sido encontrado.")
+                abort(400, "El nodo superior con el ID no ha sido encontrado.")
 
-        new_level = Level(name=name, subject_id=subject_id, created_by=user_id, parent_id=parent_id)
-        session.add(new_level)
+        new_node = Node(name=name, subject_id=subject_id, created_by=user_id, parent_id=parent_id)
+        session.add(new_node)
         session.commit()
-        schema = LevelSchema().dump(new_level)
+        schema = NodeSchema().dump(new_node)
         return schema
 
     @staticmethod
-    def get_level(
+    def get_node(
             session,
             id: int
-    ) -> LevelSchema:
-        query = select(Level).where(Level.id == id)
+    ) -> NodeSchema:
+        query = select(Node).where(Node.id == id)
         res = session.execute(query).first()
 
         user_id = get_current_user_id()
@@ -92,39 +92,39 @@ class Level(Base):
         return res[0]
 
     @staticmethod
-    def get_subject_levels(session, subject_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+    def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
         current_user_id = get_current_user_id()
-        query = select(Level).where(
+        query = select(Node).where(
             and_(
-                Level.created_by == current_user_id,
-                Level.subject_id == Level.subject_id
+                Node.created_by == current_user_id,
+                Node.subject_id == Node.subject_id
             )
         ).offset(offset)
         if limit:
             query = query.limit(limit)
         items = session.execute(query).scalars().all()
 
-        total = session.query(Level).count()
+        total = session.query(Node).count()
 
-        schema = LevelListSchema()
+        schema = NodeListSchema()
         return schema.dump({"items": items, "total": total})
 
     @staticmethod
-    def get_questions_of_level(session, level_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
+    def get_questions_of_node(session, node_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
         from models.question.question import Question
         from models.answer.answer import Answer
         current_user_id = get_current_user_id()
         query = select(Question).distinct().join(Answer).where(
             and_(
                 Question.created_by == current_user_id,
-                Question.level_id == level_id
+                Question.node_id == node_id
             )
         ).offset(offset)
         if limit:
             query = query.limit(limit)
         items = session.execute(query).scalars().all()
 
-        total = session.query(Level).count()
+        total = session.query(Node).count()
 
         questions_with_responses = []
 
@@ -135,7 +135,7 @@ class Level(Base):
                 "id": question.id,
                 "title": question.title,
                 "subject_id": question.subject_id,
-                "level_id": question.level_id,
+                "node_id": question.node_id,
                 "time": question.time,
                 "difficulty": question.difficulty,
                 "type": question.type,

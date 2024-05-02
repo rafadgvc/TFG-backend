@@ -42,7 +42,7 @@ def add_question(question_data):
             session=SESSION,
             title=question.get('title'),
             subject_id=question.get('subject_id'),
-            level_id=question.get('level_id'),
+            node_id=question.get('node_id'),
             time=question.get('time'),
             difficulty=question.get('difficulty'),
             type=question.get('type'),

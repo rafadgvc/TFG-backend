@@ -35,7 +35,7 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    levels: Mapped[Set["Level"]] = relationship(
+    nodes: Mapped[Set["Node"]] = relationship(
         back_populates="created",
         cascade="all, delete-orphan",
         passive_deletes=True

@@ -24,7 +24,7 @@ class Subject(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    levels: Mapped[Set["Level"]] = relationship(
+    nodes: Mapped[Set["Node"]] = relationship(
         back_populates="subject",
         cascade="all, delete-orphan",
         passive_deletes=True
@@ -38,7 +38,7 @@ class Subject(Base):
         """
         Calcula el número total de preguntas para esta asignatura.
         """
-        return sum(len(question_set) for question_set in [self.questions, self.levels])
+        return sum(len(question_set) for question_set in [self.questions, self.nodes])
 
     @question_number.expression
     def question_number(cls):
@@ -48,7 +48,7 @@ class Subject(Base):
 
         from models.question import Question
         return select([func.sum(func.count(Question.id))]).where(
-            or_(Question.subject_id == cls.id, Question.level_id == cls.id)).label("question_number")
+            or_(Question.subject_id == cls.id, Question.node_id == cls.id)).label("question_number")
 
     @staticmethod
     def insert_subject(

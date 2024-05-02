@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
 from db.versions.db import Base
-from models.level.level import Level
+from models.node.node import Node
 from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
@@ -28,13 +28,13 @@ class Question(Base):
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
     time: Mapped[int] = mapped_column(Integer, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-    level_id: Mapped[int] = mapped_column(Integer, ForeignKey("level.id"))
+    node_id: Mapped[int] = mapped_column(Integer, ForeignKey("node.id"))
     type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'development', 'multiple')"), nullable=False)
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="questions")
     subject: Mapped["Subject"] = relationship(back_populates="questions")
-    level: Mapped["Level"] = relationship(back_populates="questions")
+    node: Mapped["Node"] = relationship(back_populates="questions")
     answers: Mapped[Set["Answer"]] = relationship(
         back_populates="question",
         cascade="all, delete-orphan",
@@ -49,7 +49,7 @@ class Question(Base):
             session,
             title: str,
             subject_id: int,
-            level_id: int,
+            node_id: int,
             difficulty: int,
             time: int,
             type: str,
@@ -70,7 +70,7 @@ class Question(Base):
             title=title,
             subject_id=subject_id,
             created_by=user_id,
-            level_id=level_id,
+            node_id=node_id,
             time=time,
             difficulty=difficulty,
             type=type.lower()
