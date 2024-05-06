@@ -1,5 +1,5 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, and_, delete, func
+from sqlalchemy import Integer, String, select, ForeignKey, and_, delete, func, null
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
@@ -43,14 +43,32 @@ class Node(Base):
 
     @hybrid_property
     def leaf(self):
-        # Si el nodo no tiene hijos, es una hoja
+        """
+        Calcula si el nodo tiene hijos.
+        """
         return not bool(self.children)
 
     @leaf.expression
     def leaf(cls):
-        # Expresión para la base de datos: cuenta los hijos del nodo
-        # Si el conteo es 0, el nodo es una hoja
+        """
+        Expresión SQLAlchemy para calcular si el nodo tiene hijos.
+        """
         return ~func.exists().where(cls.id == cls.parent_id)
+
+    @hybrid_property
+    def root(self):
+        """
+        Calcula si el nodo es raíz.
+        """
+        return self.parent_id is None
+
+    @root.expression
+    def root(cls):
+        """
+        Expresión SQLAlchemy para calcular si el nodo no tiene padre.
+        """
+        # Expresión para la base de datos: verifica si el padre es nulo
+        return cls.parent_id == null()
 
     @staticmethod
     def insert_node(
