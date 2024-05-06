@@ -6,6 +6,8 @@ class NodeSchema(Schema):
     name = fields.String()
     subject_id = fields.Integer()
     parent_id = fields.Integer()
+    class Meta:
+        unknown = EXCLUDE
 
 class NodeReducedSchema(Schema):
     name = fields.String()

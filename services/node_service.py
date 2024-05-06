@@ -64,3 +64,32 @@ def get_subjects_nodes(id):
         session=SESSION,
         subject_id=id,
         )
+
+
+@blp.route('<int:id>', methods=["PUT"])
+@blp.arguments(NodeSchema)
+@jwt_required()
+@blp.response(204, NodeSchema)
+def edit_node(node_data, id):
+    """ Edits node name
+    """
+    return Node.update_node(
+        SESSION,
+        id=id,
+        name=node_data.get('name')
+
+    )
+
+@blp.route('<int:id>', methods=["DELETE"])
+@jwt_required()
+@blp.response(204)
+def delete_node(id):
+    """ Deletes node
+    """
+    try:
+        Node.delete_node(
+            SESSION,
+            id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))

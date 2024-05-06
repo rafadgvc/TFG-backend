@@ -110,24 +110,6 @@ class Node(Base):
         return schema.dump({"items": items, "total": total})
 
     @staticmethod
-    def delete_node(
-            session,
-            id: int
-    ) -> None:
-        query = select(Node).where(Node.id == id)
-        res = session.execute(query).first()
-
-        current_user_id = get_current_user_id()
-        if res[0].created_by != current_user_id:
-            abort(401, "No tienes acceso a este recurso.")
-
-        query = delete(Node).where(Node.id == id)
-        session.execute(query)
-        session.commit()
-
-        session.commit()
-
-    @staticmethod
     def get_questions_of_node(session, node_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
         from models.question.question import Question
         from models.answer.answer import Answer
@@ -163,3 +145,45 @@ class Node(Base):
 
         schema = FullQuestionListSchema()
         return schema.dump({"items": questions_with_responses, "total": total})
+
+    @staticmethod
+    def update_node(
+            session,
+            name: str,
+            id: int
+    ) -> NodeSchema:
+        query = select(Node).where(Node.id == id)
+        res = session.execute(query).first()
+
+        current_user_id = get_current_user_id()
+        if res[0].created_by != current_user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        res[0].name = name
+
+        session.commit()
+
+        schema = NodeSchema().dump(res[0])
+
+        return schema
+
+    @staticmethod
+    def delete_node(
+            session,
+            id: int
+    ) -> None:
+        from models.question.question import Question
+        query = select(Node).where(Node.id == id)
+        res = session.execute(query).first()
+
+        current_user_id = get_current_user_id()
+        if res[0].created_by != current_user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        query = delete(Question).where(Question.node_id == id)
+        session.execute(query)
+        session.commit()
+
+        query = delete(Node).where(Node.id == id)
+        session.execute(query)
+        session.commit()

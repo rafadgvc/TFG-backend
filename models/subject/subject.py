@@ -91,6 +91,7 @@ class Subject(Base):
             id: int
     ) -> None:
         from models.question.question import Question
+        from models.node.node import Node
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
 
@@ -99,6 +100,10 @@ class Subject(Base):
             abort(401, "No tienes acceso a este recurso.")
 
         query = delete(Question).where(Question.subject_id == id)
+        session.execute(query)
+        session.commit()
+
+        query = delete(Node).where(Node.subject_id == id)
         session.execute(query)
         session.commit()
 
