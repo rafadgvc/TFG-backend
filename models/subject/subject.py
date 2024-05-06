@@ -134,3 +134,25 @@ class Subject(Base):
         schema = SubjectListSchema()
         return schema.dump({"items": items, "total": total})
 
+    @staticmethod
+    def update_subject(
+            session,
+            name: str,
+            id: int
+    ) -> SubjectSchema:
+        query = select(Subject).where(Subject.id == id)
+        res = session.execute(query).first()
+
+        current_user_id = get_current_user_id()
+        if res[0].created_by != current_user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        res[0].name = name
+
+        session.commit()
+
+
+        schema = SubjectSchema().dump(res[0])
+
+        return schema
+

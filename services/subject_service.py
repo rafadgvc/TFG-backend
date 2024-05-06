@@ -68,3 +68,17 @@ def delete_subject(id):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+@blp.route('<int:id>', methods=["PUT"])
+@blp.arguments(SubjectSchema)
+@jwt_required()
+@blp.response(204, SubjectSchema)
+def edit_subject(subject_data, id):
+    """ Returns subject
+    """
+    return Subject.update_subject(
+        SESSION,
+        id=id,
+        name=subject_data.get('name')
+
+    )
