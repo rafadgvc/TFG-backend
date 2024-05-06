@@ -1,4 +1,5 @@
-from marshmallow import Schema, fields, post_dump
+from marshmallow import Schema, fields, post_dump, EXCLUDE
+
 
 class NodeSchema(Schema):
     id = fields.Integer()
@@ -10,6 +11,8 @@ class NodeReducedSchema(Schema):
     name = fields.String()
     subject_id = fields.Integer()
     parent_id = fields.Integer()
+    class Meta:
+        unknown = EXCLUDE
 
 class NodeListSchema(Schema):
     items = fields.List(fields.Nested(NodeSchema))

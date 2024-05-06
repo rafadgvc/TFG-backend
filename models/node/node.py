@@ -1,5 +1,5 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, and_
+from sqlalchemy import Integer, String, select, ForeignKey, and_, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
@@ -92,12 +92,12 @@ class Node(Base):
         return res[0]
 
     @staticmethod
-    def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+    def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> NodeListSchema:
         current_user_id = get_current_user_id()
         query = select(Node).where(
             and_(
                 Node.created_by == current_user_id,
-                Node.subject_id == Node.subject_id
+                Node.subject_id == subject_id
             )
         ).offset(offset)
         if limit:
@@ -108,6 +108,24 @@ class Node(Base):
 
         schema = NodeListSchema()
         return schema.dump({"items": items, "total": total})
+
+    @staticmethod
+    def delete_node(
+            session,
+            id: int
+    ) -> None:
+        query = select(Node).where(Node.id == id)
+        res = session.execute(query).first()
+
+        current_user_id = get_current_user_id()
+        if res[0].created_by != current_user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        query = delete(Node).where(Node.id == id)
+        session.execute(query)
+        session.commit()
+
+        session.commit()
 
     @staticmethod
     def get_questions_of_node(session, node_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
