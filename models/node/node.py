@@ -1,5 +1,6 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, and_, delete
+from sqlalchemy import Integer, String, select, ForeignKey, and_, delete, func
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
@@ -39,6 +40,17 @@ class Node(Base):
 
     def __repr__(self):
      return "<Node(id='%s', name='%s')>" % (self.id, self.name)
+
+    @hybrid_property
+    def leaf(self):
+        # Si el nodo no tiene hijos, es una hoja
+        return not bool(self.children)
+
+    @leaf.expression
+    def leaf(cls):
+        # Expresión para la base de datos: cuenta los hijos del nodo
+        # Si el conteo es 0, el nodo es una hoja
+        return ~func.exists().where(cls.id == cls.parent_id)
 
     @staticmethod
     def insert_node(
@@ -88,8 +100,10 @@ class Node(Base):
         user_id = get_current_user_id()
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
-
-        return res[0]
+        node = res[0]
+        node_data = NodeSchema().dump(node)
+        node_data['leaf'] = node.leaf
+        return node_data
 
     @staticmethod
     def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> NodeListSchema:
