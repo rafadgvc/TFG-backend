@@ -124,6 +124,24 @@ class Question(Base):
         return schema.dump({"items": items, "total": total})
 
     @staticmethod
+    def get_subject_questions(session, subject_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+        current_user_id = get_current_user_id()
+        query = select(Question).where(
+            and_(
+                Question.created_by == current_user_id,
+                Question.subject_id == subject_id
+            )
+        ).offset(offset)
+        if limit:
+            query = query.limit(limit)
+        items = session.execute(query).scalars().all()
+
+        total = session.query(Question).count()
+
+        schema = QuestionListSchema()
+        return schema.dump({"items": items, "total": total})
+
+    @staticmethod
     def get_full_question(
             session,
             id: int

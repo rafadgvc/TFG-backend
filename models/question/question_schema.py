@@ -1,6 +1,6 @@
-from marshmallow import Schema, fields, post_dump
+from marshmallow import Schema, fields, post_dump, EXCLUDE
 
-from models.answer.answer_schema import AnswerListSchema
+from models.answer.answer_schema import AnswerListSchema, AnswerAddListSchema
 
 
 class QuestionSchema(Schema):
@@ -11,6 +11,8 @@ class QuestionSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    class Meta:
+        unknown = EXCLUDE
 
 class QuestionReducedSchema(Schema):
     title = fields.String()
@@ -19,6 +21,7 @@ class QuestionReducedSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    answers = fields.Nested(AnswerAddListSchema)
 
 class QuestionListSchema(Schema):
     items = fields.List(fields.Nested(QuestionSchema))
