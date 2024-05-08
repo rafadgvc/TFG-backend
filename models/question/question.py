@@ -1,7 +1,7 @@
 from enum import Enum
 
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Table, Column
+from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
@@ -16,7 +16,7 @@ from models.associations.associations import node_question_association
 
 class QuestionType(Enum):
     TEST = "test"
-    DEVELOPMENT = "development"
+    DESARROLLO = "desarrollo"
     MULTIPLE = "multiple"
 
 
@@ -28,8 +28,9 @@ class Question(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
     time: Mapped[int] = mapped_column(Integer, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-    type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'development', 'multiple')"), nullable=False)
+    type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'desarrollo', 'multiple')"), nullable=False)
 
 
 
@@ -46,6 +47,20 @@ class Question(Base):
     def __repr__(self):
      return "<Question(id='%s', title='%s')>" % (self.id, self.title)
 
+    @hybrid_property
+    def connected(self):
+        """
+        Calcula si la pregunta tiene recursos asociados (exámenes).
+        """
+        return not bool(self.id % 3 == 0)
+
+    @connected.expression
+    def connected(cls):
+        """
+        Expresión SQLAlchemy para calcular si la pregunta tiene recursos asociados.
+        """
+        return ~func.exists().where(cls.id % 3 == 0)
+
     @staticmethod
     def insert_question(
             session,
@@ -55,6 +70,7 @@ class Question(Base):
             difficulty: int,
             time: int,
             type: str,
+            active: bool,
     ) -> QuestionSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
@@ -74,7 +90,8 @@ class Question(Base):
             created_by=user_id,
             time=time,
             difficulty=difficulty,
-            type=type.lower()
+            type=type.lower(),
+            active=active
         )
 
         # Asignar nodos a la pregunta
@@ -102,7 +119,10 @@ class Question(Base):
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
-        return res[0]
+        question = res[0]
+        question_data = QuestionSchema().dump(question)
+        question_data['connected'] = question.connected
+        return question_data
 
     @staticmethod
     def delete_question(
@@ -166,7 +186,6 @@ class Question(Base):
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
-        current_user_id = get_current_user_id()
         query = select(Answer).where(Answer.question_id == id)
         items = session.execute(query).scalars().all()
 
@@ -176,5 +195,17 @@ class Question(Base):
 
         answers = AnswerListSchema()
         answers = answers.dump({"items": items, "total": total})
-        return schema.dump({"id": res[0].id, "title": res[0].title, "subject_id": res[0].subject_id, "answers": answers})
+        return schema.dump(
+            {
+                "id": res[0].id,
+                "title": res[0].title,
+                "subject_id": res[0].subject_id,
+                "time": res[0].time,
+                "difficulty": res[0].difficulty,
+                "type": res[0].type,
+                "active": res[0].active,
+                "connected": res[0].connected,
+                "answers": answers
+            }
+        )
 

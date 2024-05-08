@@ -49,6 +49,7 @@ def add_question(question_data):
             time=question.get('time'),
             difficulty=question.get('difficulty'),
             type=question.get('type'),
+            active=question.get('active'),
         )
 
         new_question['answers'] = {'items': [], 'total': 0}
