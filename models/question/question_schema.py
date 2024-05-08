@@ -22,6 +22,8 @@ class QuestionReducedSchema(Schema):
     difficulty = fields.Integer()
     type = fields.String()
     answers = fields.Nested(AnswerAddListSchema)
+    class Meta:
+        unknown = EXCLUDE
 
 class QuestionListSchema(Schema):
     items = fields.List(fields.Nested(QuestionSchema))
@@ -41,6 +43,8 @@ class FullQuestionSchema(Schema):
     difficulty = fields.Integer()
     type = fields.String()
     answers = fields.Nested(AnswerListSchema)
+    class Meta:
+        unknown = EXCLUDE
 
 class FullQuestionListSchema(Schema):
     items = fields.List(fields.Nested(FullQuestionSchema))
