@@ -6,11 +6,11 @@ from typing import Set
 
 from db.versions.db import Base
 from models.node.node_schema import NodeSchema, NodeListSchema
-from models.question.question_schema import QuestionListSchema, FullQuestionListSchema, FullQuestionSchema, \
-    QuestionSchema
+from models.question.question_schema import FullQuestionListSchema, FullQuestionSchema, QuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
+from models.associations.associations import node_question_association
 
 
 class Node(Base):
@@ -32,10 +32,10 @@ class Node(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    questions: Mapped[Set["Question"]] = relationship(
-        back_populates="node",
-        cascade="all, delete-orphan",
-        passive_deletes=True
+    questions = relationship(
+        "Question",
+        secondary=node_question_association,
+        back_populates="nodes"
     )
 
     def __repr__(self):

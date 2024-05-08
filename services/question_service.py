@@ -40,11 +40,12 @@ def add_question(question_data):
     try:
         question = FullQuestionSchema().load(question_data)
         answers_data = question.pop('answers', [])
+        node_ids = question.pop('node_ids', [])
         new_question = Question.insert_question(
             session=SESSION,
             title=question.get('title'),
             subject_id=question.get('subject_id'),
-            node_id=question.get('node_id'),
+            node_ids=node_ids,
             time=question.get('time'),
             difficulty=question.get('difficulty'),
             type=question.get('type'),

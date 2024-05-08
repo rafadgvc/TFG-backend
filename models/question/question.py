@@ -1,10 +1,10 @@
 from enum import Enum
 
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint
+from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Table, Column
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from typing import Set
+from typing import Set, List
 
 from db.versions.db import Base
 from models.node.node import Node
@@ -12,6 +12,7 @@ from models.question.question_schema import QuestionSchema, QuestionListSchema, 
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id
+from models.associations.associations import node_question_association
 
 class QuestionType(Enum):
     TEST = "test"
@@ -28,13 +29,14 @@ class Question(Base):
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
     time: Mapped[int] = mapped_column(Integer, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-    node_id: Mapped[int] = mapped_column(Integer, ForeignKey("node.id"))
     type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'development', 'multiple')"), nullable=False)
+
+
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="questions")
     subject: Mapped["Subject"] = relationship(back_populates="questions")
-    node: Mapped["Node"] = relationship(back_populates="questions")
+    nodes = relationship("Node", secondary=node_question_association, back_populates="questions")
     answers: Mapped[Set["Answer"]] = relationship(
         back_populates="question",
         cascade="all, delete-orphan",
@@ -49,7 +51,7 @@ class Question(Base):
             session,
             title: str,
             subject_id: int,
-            node_id: int,
+            node_ids: List[int],
             difficulty: int,
             time: int,
             type: str,
@@ -57,8 +59,8 @@ class Question(Base):
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
-            Subject.id == subject_id,
-            Subject.created_by == user_id
+                Subject.id == subject_id,
+                Subject.created_by == user_id
             )
         )
         subject = session.execute(query).first()
@@ -70,11 +72,19 @@ class Question(Base):
             title=title,
             subject_id=subject_id,
             created_by=user_id,
-            node_id=node_id,
             time=time,
             difficulty=difficulty,
             type=type.lower()
         )
+
+        # Asignar nodos a la pregunta
+        for node_id in node_ids:
+            query = select(Node).where(Node.id == node_id)
+            node = session.execute(query).first()
+            if not node:
+                abort(400, f"El nodo con el ID {node_id} no fue encontrado.")
+            new_question.nodes.append(node[0])
+
         session.add(new_question)
         session.commit()
         schema = QuestionSchema().dump(new_question)
