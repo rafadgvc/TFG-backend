@@ -124,6 +124,7 @@ class Exam(Base):
         # Asignar preguntas al examen
         for question_id in question_ids:
 
+            # TODO: Actualizar usos de preguntas
             query = select(Question).where(Question.id == question_id)
             question = session.execute(query).first()
             if not question:
@@ -163,8 +164,11 @@ class Exam(Base):
         exam = res[0]
         exam_data = {
             "id": exam.id,
+            "connected": exam.connected,
             "title": exam.title,
             "subject_id": exam.subject_id,
+            "difficulty": exam.difficulty,
+            "time": exam.time,
             "questions": {
                 "items": [],
                 "total": 0
