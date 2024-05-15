@@ -40,6 +40,22 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+    question_parameters: Mapped[Set["QuestionParameter"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    parameters: Mapped[Set["Parameter"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    exams: Mapped[Set["Exam"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
 
     def __repr__(self):
      return "<User(id='%s', email='%s')>" % (self.id, self.email)

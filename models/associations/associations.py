@@ -7,3 +7,10 @@ node_question_association = Table(
     Column('node_id', Integer, ForeignKey('node.id')),
     Column('question_id', Integer, ForeignKey('question.id'))
 )
+
+exam_question_association = Table(
+    'exam_question_association',
+    Base.metadata,
+    Column('question_id', Integer, ForeignKey('question.id')),
+    Column('exam_id', Integer, ForeignKey('exam.id'))
+)

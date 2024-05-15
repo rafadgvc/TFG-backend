@@ -1,6 +1,7 @@
 from marshmallow import Schema, fields, post_dump, EXCLUDE
 
 from models.answer.answer_schema import AnswerListSchema, AnswerAddListSchema
+from models.question_parameter.question_parameter_schema import QuestionParameterListSchema
 
 
 class QuestionSchema(Schema):
@@ -24,6 +25,7 @@ class QuestionReducedSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
     answers = fields.Nested(AnswerAddListSchema)
     class Meta:
         unknown = EXCLUDE
@@ -43,10 +45,12 @@ class FullQuestionSchema(Schema):
     subject_id = fields.Integer()
     node_ids = fields.List(fields.Integer())
     active = fields.Boolean()
+    connected = fields.Boolean()
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
     answers = fields.Nested(AnswerListSchema)
+    # question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
     class Meta:
         unknown = EXCLUDE
 
