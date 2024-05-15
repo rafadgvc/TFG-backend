@@ -1,11 +1,12 @@
 from flask import abort
-from sqlalchemy import Integer, String, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func, select
+from sqlalchemy import Integer, String, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func, select, \
+    or_, distinct
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
 
 from db.versions.db import Base
-from models.exam.exam_schema import FullExamSchema
+from models.exam.exam_schema import FullExamSchema, ExamListSchema
 from models.node.node import Node
 from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
 from models.subject.subject import Subject
@@ -64,11 +65,8 @@ class Exam(Base):
         """
         from models.question.question import Question
         return (
-            select([func.avg(Question.difficulty)])
-            .where(Exam.id == cls.id)
-            .select_from(Exam)
-            .join(exam_question_association)
-            .join(Question)
+            select([func.avg(exam_question_association.c.difficulty)])
+            .where(exam_question_association.c.exam_id == cls.id)
             .scalar_subquery()
         )
 
@@ -92,6 +90,29 @@ class Exam(Base):
             .join(exam_question_association)
             .join(Question)
             .scalar_subquery()
+        )
+
+    @hybrid_property
+    def question_number(self):
+        """
+        Calcula el número total de preguntas del examen.
+        """
+        return len(self.questions)
+
+    @question_number.expression
+    def question_number(cls):
+        """
+        Expresión SQLAlchemy para calcular el número total de preguntas del examen.
+        """
+
+        from models.question.question import Question
+        return (
+            select([func.count(distinct(Question.id))])
+            .where(Exam.id == cls.id)
+            .select_from(Exam)
+            .join(exam_question_association)
+            .join(Question)
+            .scalar_subquery().label('question_number')
         )
 
     @staticmethod
@@ -181,5 +202,49 @@ class Exam(Base):
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
         return exam_data
+
+    @staticmethod
+    def get_subject_exams(session, subject_id: int, limit: int = None, offset: int = 0) -> ExamListSchema:
+        from models.question import Question
+        user_id = get_current_user_id()
+        query = select(Subject).where(
+            and_(
+                Subject.id == subject_id,
+                Subject.created_by == user_id
+            )
+        )
+        subject = session.execute(query).first()
+
+        if not subject:
+            abort(400, "La asignatura con el ID no ha sido encontrada.")
+
+        query = (session.query(
+            Exam.id,
+            Exam.title,
+            func.avg(Question.difficulty).label('difficulty'),
+            func.sum(Question.time).label('time'),
+            func.count(distinct(Question.id)).label('question_number')
+        )
+                 .join(exam_question_association, Exam.id == exam_question_association.c.exam_id)
+                 .join(Question, Question.id == exam_question_association.c.question_id)
+                 .filter(Exam.subject_id == subject_id)
+                 .group_by(Exam.id, Exam.title)
+                 .offset(offset)
+                 )
+
+        if limit:
+            query = query.limit(limit)
+
+        res = session.execute(query)
+
+        items = []
+        total = 0
+        for item in query:
+            items.append(item._mapping)
+            total += 1
+
+        schema = ExamListSchema()
+        return schema.dump({"items": items, "total": total})
+
 
 

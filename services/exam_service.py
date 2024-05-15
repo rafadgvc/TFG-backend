@@ -1,9 +1,10 @@
 from flask_jwt_extended import jwt_required
 
 from models.exam.exam import Exam
-from models.exam.exam_schema import ExamSchema, FullExamSchema
+from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
+from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Exam", __name__, url_prefix="/exam")
 Session = create_db()
@@ -47,3 +48,18 @@ def add_exam(exam_data):
         return new_exam
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('/list/<int:subject_id>', methods=["GET"])
+@jwt_required()
+@blp.arguments(PaginationSchema, location='query')
+@blp.response(200, ExamListSchema)
+def get_subject_exams(pagination_params, subject_id):
+    """ Returns list of exams in a subject
+    """
+    return Exam.get_subject_exams(
+        SESSION,
+        limit=pagination_params.get('limit', None),
+        offset=pagination_params.get('offset', 0),
+        subject_id=subject_id
+    )
