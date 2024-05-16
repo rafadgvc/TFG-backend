@@ -62,14 +62,15 @@ class Question(Base):
         """
         Calcula si la pregunta tiene recursos asociados (exámenes).
         """
-        return not bool(self.id % 3 == 0)
+        return len(self.exams) > 0
 
     @connected.expression
     def connected(cls):
         """
-        Expresión SQLAlchemy para calcular si la pregunta tiene recursos asociados.
+        Expresión SQLAlchemy para calcular si la pregunta tiene recursos asociados (exámenes).
         """
-        return ~func.exists().where(cls.id % 3 == 0)
+        return select([func.count(exam_question_association.c.exam_id)]).where(
+            exam_question_association.c.question_id == cls.id).label("exam_count") > 0
 
     @staticmethod
     def get_answers_for_question(session, question_id: int, limit: int = None, offset: int = 0) -> AnswerListSchema:
@@ -209,6 +210,7 @@ class Question(Base):
         res = session.execute(query).first()
 
         user_id = get_current_user_id()
+        # TODO: Comprobar que la pregunta existe
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
