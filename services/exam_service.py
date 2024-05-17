@@ -5,6 +5,7 @@ from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from utils.common_schema import PaginationSchema
+from models.question_parameter.question_parameter import QuestionParameter
 
 blp = Blueprint("Exam", __name__, url_prefix="/exam")
 Session = create_db()

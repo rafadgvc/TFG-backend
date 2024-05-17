@@ -50,7 +50,7 @@ class FullQuestionSchema(Schema):
     difficulty = fields.Integer()
     type = fields.String()
     answers = fields.Nested(AnswerListSchema)
-    # question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
+    question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
     class Meta:
         unknown = EXCLUDE
 

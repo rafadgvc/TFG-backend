@@ -20,7 +20,6 @@ from models.associations.associations import node_question_association, exam_que
 class QuestionType(Enum):
     TEST = "test"
     DESARROLLO = "desarrollo"
-    PARAMETRIZADA = "parametrizada"
 
 
 class Question(Base):
@@ -47,7 +46,6 @@ class Question(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-
     question_parameters: Mapped[Set["QuestionParameter"]] = relationship(
         back_populates="question",
         cascade="all, delete-orphan",

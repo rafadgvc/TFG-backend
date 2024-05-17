@@ -1,10 +1,11 @@
 from marshmallow import Schema, fields, post_dump
-from models.parameter.parameter_schema import ParameterListSchema
 
 
 class QuestionParameterSchema(Schema):
     question_id = fields.String()
-    parameters = fields.Nested(ParameterListSchema)
+    value = fields.String()
+    position = fields.Integer()
+    group = fields.Integer()
 
 class QuestionParameterListSchema(Schema):
     items = fields.List(fields.Nested(QuestionParameterSchema))

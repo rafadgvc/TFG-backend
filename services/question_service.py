@@ -6,8 +6,6 @@ from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from utils.common_schema import PaginationSchema
-from models.question_parameter.question_parameter import QuestionParameter
-from models.parameter.parameter import Parameter
 
 blp = Blueprint("Question", __name__, url_prefix="/question")
 Session = create_db()
