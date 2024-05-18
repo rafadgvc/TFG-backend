@@ -1,4 +1,4 @@
-from marshmallow import Schema, fields, post_dump
+from marshmallow import Schema, fields, post_dump, EXCLUDE
 
 
 class QuestionParameterFullSchema(Schema):
@@ -6,6 +6,8 @@ class QuestionParameterFullSchema(Schema):
     value = fields.String()
     position = fields.Integer()
     group = fields.Integer()
+    class Meta:
+        unknown = EXCLUDE
 
 class QuestionParameterFullListSchema(Schema):
     items = fields.List(fields.Nested(QuestionParameterFullSchema))
@@ -20,6 +22,8 @@ class QuestionParameterSchema(Schema):
     value = fields.String()
     position = fields.Integer()
     group = fields.Integer()
+    class Meta:
+        unknown = EXCLUDE
 
 class QuestionParameterListSchema(Schema):
     items = fields.List(fields.Nested(QuestionParameterSchema))
