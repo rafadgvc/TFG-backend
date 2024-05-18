@@ -5,6 +5,7 @@ from models.question.question_schema import QuestionSchema, QuestionListSchema, 
 from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
+from models.question_parameter.question_parameter import QuestionParameter
 from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Question", __name__, url_prefix="/question")
@@ -40,6 +41,7 @@ def add_question(question_data):
     try:
         question = FullQuestionSchema().load(question_data)
         answers_data = question.pop('answers', [])
+        question_parameters_data = question.pop('question_parameters', [])
         node_ids = question.pop('node_ids', [])
         new_question = Question.insert_question(
             session=SESSION,
@@ -63,6 +65,20 @@ def add_question(question_data):
             )
             new_question['answers']['items'].append(new_answer)
             new_question['answers']['total'] += 1
+
+        if question_parameters_data is not []:
+            new_question['question_parameters'] = {'items': [], 'total': 0}
+
+            for question_parameter_data in question_parameters_data.get('items'):
+                new_question_parameter = QuestionParameter.insert_question_parameter(
+                    session=SESSION,
+                    question_id=new_question['id'],
+                    value=question_parameter_data.get('value'),
+                    group=question_parameter_data.get('group'),
+                    position=question_parameter_data.get('position')
+                )
+                new_question['question_parameters']['items'].append(new_question_parameter)
+                new_question['question_parameters']['total'] += 1
 
         return new_question
     except Exception as e:

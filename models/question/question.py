@@ -30,9 +30,10 @@ class Question(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
     time: Mapped[int] = mapped_column(Integer, nullable=False)
+    parametrized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-    type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'desarrollo', 'parametrizada')"), nullable=False)
+    type: Mapped[str] = mapped_column(String, CheckConstraint("type IN ('test', 'desarrollo')"), nullable=False)
 
 
 
@@ -126,8 +127,20 @@ class Question(Base):
 
         session.add(new_question)
         session.commit()
-        schema = FullQuestionSchema().dump(new_question)
-        return schema
+        schema = FullQuestionSchema()
+
+        return schema.dump(
+            {
+                "id": new_question.id,
+                "title": new_question.title,
+                "subject_id": new_question.subject_id,
+                "time": new_question.time,
+                "difficulty": new_question.difficulty,
+                "type": new_question.type,
+                "active": new_question.active,
+                "connected": new_question.connected
+            }
+        )
 
     @staticmethod
     def get_question(
