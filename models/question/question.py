@@ -216,6 +216,8 @@ class Question(Base):
     ) -> FullQuestionSchema:
         from models.answer.answer import Answer
         from models.answer.answer_schema import AnswerListSchema
+        from models.question_parameter.question_parameter import QuestionParameter
+        from models.question_parameter.question_parameter_schema import QuestionParameterListSchema
 
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
@@ -230,10 +232,18 @@ class Question(Base):
 
         total = session.query(Answer).count()
 
-        schema = FullQuestionSchema()
-
         answers = AnswerListSchema()
         answers = answers.dump({"items": items, "total": total})
+
+        query = select(QuestionParameter).where(QuestionParameter.question_id == id).order_by(QuestionParameter.group, QuestionParameter.position)
+        items2 = session.execute(query).scalars().all()
+
+        total2 = session.query(QuestionParameter).count()
+
+        schema = FullQuestionSchema()
+
+        question_parameters = QuestionParameterListSchema()
+        question_parameters = question_parameters.dump({"items": items2, "total": total2})
         return schema.dump(
             {
                 "id": res[0].id,
@@ -244,7 +254,8 @@ class Question(Base):
                 "type": res[0].type,
                 "active": res[0].active,
                 "connected": res[0].connected,
-                "answers": answers
+                "answers": answers,
+                "question_parameters": question_parameters
             }
         )
 
