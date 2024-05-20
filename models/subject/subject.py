@@ -97,12 +97,19 @@ class Subject(Base):
     ) -> None:
         from models.question.question import Question
         from models.node.node import Node
+        from models.question_parameter.question_parameter import QuestionParameter
+        from models.associations.associations import node_question_association
+        # TODO: Eliminar asociación nodo-pregunta
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
 
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
+
+        query = delete(QuestionParameter).where(QuestionParameter.subject_id == id)
+        session.execute(query)
+        session.commit()
 
         query = delete(Question).where(Question.subject_id == id)
         session.execute(query)
