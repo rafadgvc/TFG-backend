@@ -164,6 +164,9 @@ class Question(Base):
             session,
             id: int
     ) -> None:
+        from models.answer.answer import Answer
+        from models.question_parameter.question_parameter import QuestionParameter
+        from models.associations.associations import node_question_association
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
 
@@ -173,6 +176,19 @@ class Question(Base):
 
         if res[0].connected == True:
             abort(401, "La pregunta tiene recursos asociados.")
+
+
+        query = delete(Answer).where(Answer.question_id == id)
+        session.execute(query)
+        session.commit()
+
+        query = delete(node_question_association).where(node_question_association.c.question_id == id)
+        session.execute(query)
+        session.commit()
+
+        query = delete(QuestionParameter).where(QuestionParameter.question_id == id)
+        session.execute(query)
+        session.commit()
 
         query = delete(Question).where(Question.id == id)
         session.execute(query)
