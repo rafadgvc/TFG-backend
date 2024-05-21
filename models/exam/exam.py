@@ -149,7 +149,7 @@ class Exam(Base):
             query = select(Question).where(Question.id == question_id)
             question = session.execute(query).first()
             if not question:
-                abort(400, f"El pregunta con el ID {question_id} no fue encontrada.")
+                abort(400, f"La pregunta con el ID {question_id} no fue encontrada.")
             new_exam.questions.append(question[0])
 
         session.add(new_exam)
@@ -244,6 +244,26 @@ class Exam(Base):
             total += 1
 
         schema = ExamListSchema()
+        return schema.dump({"items": items, "total": total})
+
+    @staticmethod
+    def get_questions_to_select(session, node_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+        from models.question.question import Question
+        from models.associations.associations import node_question_association
+        current_user_id = get_current_user_id()
+        query = select(Question).join(node_question_association).where(
+            and_(
+                Question.created_by == current_user_id,
+                node_question_association.c.node_id == node_id
+            )
+        ).offset(offset)
+        if limit:
+            query = query.limit(limit)
+        items = session.execute(query).scalars().all()
+
+        total = session.query(Question).count()
+
+        schema = QuestionListSchema()
         return schema.dump({"items": items, "total": total})
 
 

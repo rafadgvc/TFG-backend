@@ -4,6 +4,7 @@ from models.exam.exam import Exam
 from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
+from models.question.question_schema import QuestionListSchema
 from utils.common_schema import PaginationSchema
 from models.question_parameter.question_parameter import QuestionParameter
 
@@ -63,4 +64,18 @@ def get_subject_exams(pagination_params, subject_id):
         limit=pagination_params.get('limit', None),
         offset=pagination_params.get('offset', 0),
         subject_id=subject_id
+    )
+
+@blp.route('/select-questions/<int:id>', methods=["GET"])
+@jwt_required()
+@blp.arguments(PaginationSchema, location='query')
+@blp.response(200, QuestionListSchema)
+def select_node_questions(pagination_params, id):
+    """ Returns questions that belong to the current user and a specific subject
+    """
+    return Exam.get_questions_to_select(
+        SESSION,
+        node_id=id,
+        limit=pagination_params.get('limit', None),
+        offset=pagination_params.get('offset', 0),
     )
