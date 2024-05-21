@@ -1,7 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from models.exam.exam import Exam
-from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema
+from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema, SectionSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.question.question_schema import QuestionListSchema
@@ -66,16 +66,20 @@ def get_subject_exams(pagination_params, subject_id):
         subject_id=subject_id
     )
 
-@blp.route('/select-questions/<int:id>', methods=["GET"])
+@blp.route('/select-questions', methods=["GET"])
 @jwt_required()
-@blp.arguments(PaginationSchema, location='query')
+@blp.arguments(SectionSchema, location='query')
 @blp.response(200, QuestionListSchema)
-def select_node_questions(pagination_params, id):
+def select_node_questions(section_data):
     """ Returns questions that belong to the current user and a specific subject
     """
     return Exam.get_questions_to_select(
         SESSION,
-        node_id=id,
-        limit=pagination_params.get('limit', None),
-        offset=pagination_params.get('offset', 0),
+        node_id=section_data.get('node_id'),
+        time=section_data.get('time', None),
+        difficulty=section_data.get('difficulty', None),
+        repeat=section_data.get('repeat', None),
+        type=section_data.get('type', None),
+        question_number=section_data.get('question_number', None),
+
     )

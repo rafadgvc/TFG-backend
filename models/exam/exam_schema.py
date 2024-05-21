@@ -1,9 +1,5 @@
 from marshmallow import Schema, fields, post_dump, EXCLUDE
-
-from models.answer.answer_schema import AnswerListSchema, AnswerAddListSchema
 from models.question.question_schema import FullQuestionListSchema
-from models.question_parameter.question_parameter_schema import QuestionParameterListSchema
-
 
 class ExamSchema(Schema):
     title = fields.String()
@@ -31,6 +27,17 @@ class ExamSummarySchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     question_number = fields.Integer()
+    class Meta:
+        unknown = EXCLUDE
+
+class SectionSchema(Schema):
+    id = fields.Integer()
+    node_id = fields.Integer()
+    question_number = fields.Integer()
+    time = fields.Integer()
+    difficulty = fields.Integer()
+    type = fields.List(fields.String())
+    repeat = fields.Boolean()
     class Meta:
         unknown = EXCLUDE
 

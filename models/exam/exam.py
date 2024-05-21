@@ -1,6 +1,8 @@
+import random
+
 from flask import abort
 from sqlalchemy import Integer, String, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func, select, \
-    or_, distinct
+    or_, distinct, not_
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
@@ -247,24 +249,58 @@ class Exam(Base):
         return schema.dump({"items": items, "total": total})
 
     @staticmethod
-    def get_questions_to_select(session, node_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+    def get_questions_to_select(
+            session,
+            node_id: int,
+            question_number: int = None,
+            type: list[str] = None,
+            time: int = None,
+            difficulty: int = None,
+            repeat: bool = None,
+            limit: int = None,
+            offset: int = 0
+    ) -> QuestionListSchema:
         from models.question.question import Question
         from models.associations.associations import node_question_association
         current_user_id = get_current_user_id()
+
         query = select(Question).join(node_question_association).where(
             and_(
                 Question.created_by == current_user_id,
                 node_question_association.c.node_id == node_id
             )
         ).offset(offset)
+
+
+
         if limit:
             query = query.limit(limit)
-        items = session.execute(query).scalars().all()
+
+        questions = session.execute(query).scalars().all()
+
+        def get_sort_key(question):
+            uses = getattr(question, 'uses', 0) if repeat else None
+            type_match = 0 if type and question.type in type else 1
+            time_diff = abs(question.time - time) if time is not None else 0
+            difficulty_diff = abs(question.difficulty - difficulty) if difficulty is not None else 0
+            random_value = random.random()
+            return (
+                uses if uses is not None else float('inf'),
+                type_match,
+                time_diff,
+                difficulty_diff,
+                question.uses if hasattr(question, 'uses') else float('inf'),
+                random_value
+            )
+
+        questions.sort(key=get_sort_key)
+
+        if question_number is not None:
+            questions = questions[:question_number]
 
         total = session.query(Question).count()
-
         schema = QuestionListSchema()
-        return schema.dump({"items": items, "total": total})
+        return schema.dump({"items": questions, "total": total})
 
 
 
