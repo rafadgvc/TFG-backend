@@ -257,6 +257,7 @@ class Exam(Base):
             time: int = None,
             difficulty: int = None,
             repeat: bool = None,
+            exclude_ids: list[int] = None,
             limit: int = None,
             offset: int = 0
     ) -> QuestionListSchema:
@@ -271,7 +272,8 @@ class Exam(Base):
             )
         ).offset(offset)
 
-
+        if exclude_ids:
+            query = query.where(not_(Question.id.in_(exclude_ids)))
 
         if limit:
             query = query.limit(limit)

@@ -38,6 +38,7 @@ class SectionSchema(Schema):
     difficulty = fields.Integer()
     type = fields.List(fields.String())
     repeat = fields.Boolean()
+    exclude_ids = fields.List(fields.Integer())
     class Meta:
         unknown = EXCLUDE
 

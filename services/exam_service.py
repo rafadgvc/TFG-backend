@@ -81,5 +81,6 @@ def select_node_questions(section_data):
         repeat=section_data.get('repeat', None),
         type=section_data.get('type', None),
         question_number=section_data.get('question_number', None),
+        exclude_ids=section_data.get('exclude_ids', None),
 
     )
