@@ -25,6 +25,7 @@ class QuestionReducedSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    section_number = fields.Integer()
     question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
     answers = fields.Nested(AnswerAddListSchema)
     class Meta:
@@ -49,6 +50,7 @@ class FullQuestionSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    section_number = fields.Integer()
     answers = fields.Nested(AnswerListSchema)
     question_parameters = fields.Nested(QuestionParameterListSchema, nullable=True)
     class Meta:

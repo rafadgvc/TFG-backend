@@ -151,3 +151,27 @@ def disable_question(id):
         session=SESSION,
         id=id,
         )
+
+@blp.route('/<int:question_id>', methods=["PUT"])
+@jwt_required()
+@blp.arguments(FullQuestionSchema)
+@blp.response(200, FullQuestionSchema)
+def update_question(question_data, question_id):
+    """ Updates a question and returns the updated question """
+    try:
+        updated_question = Question.update_question(
+            session=SESSION,
+            question_id=question_id,
+            title=question_data.get('title'),
+            subject_id=question_data.get('subject_id'),
+            node_ids=question_data.get('node_ids', []),
+            difficulty=question_data.get('difficulty'),
+            time=question_data.get('time'),
+            type=question_data.get('type'),
+            active=question_data.get('active'),
+            question_parameters_data=question_data.get('question_parameters', {}).get('items', []),
+            answers_data=question_data.get('answers', {}).get('items', [])
+        )
+        return updated_question
+    except Exception as e:
+        abort(400, message=str(e))

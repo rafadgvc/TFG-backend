@@ -69,7 +69,20 @@ class Question(Base):
         Expresión SQLAlchemy para calcular si la pregunta tiene recursos asociados (exámenes).
         """
         return select([func.count(exam_question_association.c.exam_id)]).where(
-            exam_question_association.c.question_id == cls.id).label("exam_count") > 0
+            exam_question_association.c.question_id == cls.id).label("connected") > 0
+
+    @hybrid_property
+    def uses(self):
+        return len(self.exams)
+
+    @uses.expression
+    def uses(cls):
+        return (
+            select([func.count(exam_question_association.c.exam_id)])
+            .where(exam_question_association.c.question_id == cls.id)
+            .label("uses")
+        )
+
 
     @staticmethod
     def get_answers_for_question(session, question_id: int, limit: int = None, offset: int = 0) -> AnswerListSchema:
@@ -256,6 +269,9 @@ class Question(Base):
 
         total2 = session.query(QuestionParameter).count()
 
+        query = select(Node.id).join(node_question_association).where(node_question_association.c.question_id == id)
+        node_ids = session.execute(query).scalars().all()
+
         schema = FullQuestionSchema()
 
         question_parameters = QuestionParameterListSchema()
@@ -271,7 +287,8 @@ class Question(Base):
                 "active": res[0].active,
                 "connected": res[0].connected,
                 "answers": answers,
-                "question_parameters": question_parameters
+                "question_parameters": question_parameters,
+                "node_ids": node_ids
             }
         )
 
@@ -333,5 +350,81 @@ class Question(Base):
             question_data['answers'] = Question.get_answers_for_question(session, question.id)
             questions_data.append(question_data)
         return schema.dump({"items": questions_data, "total": total})
+
+    @staticmethod
+    def update_question(
+            session,
+            question_id: int,
+            title: str,
+            subject_id: int,
+            node_ids: List[int],
+            difficulty: int,
+            time: int,
+            type: str,
+            active: bool,
+            question_parameters_data: List[dict],
+            answers_data: List[dict]
+    ) -> FullQuestionSchema:
+        from models.answer.answer import Answer
+        from models.question_parameter.question_parameter import QuestionParameter
+        user_id = get_current_user_id()
+
+        query = select(Question).where(and_(Question.id == question_id, Question.created_by == user_id))
+        question = session.execute(query).scalar_one_or_none()
+
+        if not question:
+            abort(404, "Pregunta no encontrada o no tienes permisos para editarla.")
+
+        question.title = title
+        question.subject_id = subject_id
+        question.difficulty = difficulty
+        question.time = time
+        question.type = type.lower()
+        question.active = active
+
+        question.nodes = []
+        for node_id in node_ids:
+            query = select(Node).where(Node.id == node_id)
+            node = session.execute(query).first()
+            if not node:
+                abort(400, f"El nodo con el ID {node_id} no fue encontrado.")
+            question.nodes.append(node[0])
+
+        session.query(QuestionParameter).filter_by(question_id=question_id).delete()
+        for param in question_parameters_data:
+            new_param = QuestionParameter(
+                value=param.get('value'),
+                question_id=question_id,
+                created_by=user_id,
+                position=param.get('position'),
+                group=param.get('group')
+            )
+            session.add(new_param)
+
+        session.query(Answer).filter_by(question_id=question_id).delete()
+        for answer in answers_data:
+            new_answer = Answer(
+                body=answer.get('body'),
+                question_id=question_id,
+                created_by=user_id,
+                points=answer.get('points')
+            )
+            session.add(new_answer)
+
+        session.commit()
+        schema = FullQuestionSchema()
+
+        return schema.dump(
+            {
+                "id": question.id,
+                "title": question.title,
+                "subject_id": question.subject_id,
+                "time": question.time,
+                "difficulty": question.difficulty,
+                "type": question.type,
+                "active": question.active,
+                "connected": question.connected
+            }
+        )
 
 
