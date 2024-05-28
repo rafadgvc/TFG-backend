@@ -97,3 +97,19 @@ def export_exam(id):
         return send_file(output_file, as_attachment=True)
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
+
+@blp.route('/<int:id>/export_pdf', methods=["GET"])
+@jwt_required()
+def export_exam_to_pdf(id):
+    try:
+        # Generar el archivo PDF
+        exam_data = Exam.get_exam(SESSION, id)
+        if not exam_data:
+            return jsonify({"message": "El examen no existe"}), 404
+        output_file = f"{exam_data['title']}.pdf"
+        Exam.export_exam_to_pdf(SESSION, id, output_file)
+
+        # Devolver el archivo PDF
+        return send_file(output_file, as_attachment=True)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400

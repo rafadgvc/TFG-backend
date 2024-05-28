@@ -1,5 +1,8 @@
 import random
 
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 from flask import abort
 from sqlalchemy import Integer, String, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func, select, \
     or_, distinct, not_
@@ -124,7 +127,7 @@ class Exam(Base):
             subject_id: int,
             question_ids: List[int],
     ) -> FullExamSchema:
-        from models.question import Question
+        from models.question.question import Question
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -146,8 +149,6 @@ class Exam(Base):
 
         # Asignar preguntas al examen
         for question_id in question_ids:
-
-            # TODO: Actualizar usos de preguntas
             query = select(Question).where(Question.id == question_id)
             question = session.execute(query).first()
             if not question:
@@ -335,5 +336,35 @@ class Exam(Base):
 
                 file.write(f"ANSWER: {correct_answer_letter}\n\n")
 
+    @staticmethod
+    def export_exam_to_pdf(session, exam_id, output_file):
+        exam_data = Exam.get_exam(session, exam_id)
 
+        if not exam_data:
+            raise ValueError("El examen no existe.")
+
+        doc = SimpleDocTemplate(output_file, pagesize=letter)
+        styles = getSampleStyleSheet()
+
+        # Encabezado
+        exam_title = exam_data['title']
+        subject_name = 'Asignatura'
+        header = Paragraph(exam_title, styles['Title'])
+
+        # Contenido
+        content = [header, Spacer(1, 40)]
+        questions = exam_data['questions']['items']
+        question_number = 0
+        for question in questions:
+            question_number += 1
+            question_text = f"<b>{question_number}. {question['title']}</b><br/>"
+            content.append(Paragraph(question_text, styles['Normal']))
+            if 'answers' in question and question['type'] == 'test':
+                answers = question['answers']['items']
+                for answer in answers:
+                    content.append(Paragraph(answer['body'], styles['Normal']))
+            content.append(Spacer(1, 12))
+            content.append(Spacer(1, 12))
+
+        doc.build(content)
 
