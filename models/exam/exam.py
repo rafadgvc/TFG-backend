@@ -304,5 +304,36 @@ class Exam(Base):
         schema = QuestionListSchema()
         return schema.dump({"items": questions, "total": total})
 
+    @staticmethod
+    def export_exam_to_aiken(session, exam_id: int, output_file: str):
+        from models.answer.answer import Answer
+        user_id = get_current_user_id()
+        # Obtener el examen por ID
+        exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
+
+        if not exam:
+            raise ValueError("El examen no existe.")
+
+        # Obtener todas las preguntas y respuestas del examen
+        questions = exam.questions
+
+        with open(output_file, 'w', encoding='utf-8') as file:
+            for question in questions:
+                file.write(f"{question.title}\n")
+                answers = session.query(Answer).filter(Answer.question_id == question.id).all()
+                answer_letter = 'A'
+                correct_answer_letter = None
+
+                for answer in answers:
+                    file.write(f"{answer_letter}. {answer.body}\n")
+                    if answer.points == 1 or question.type == 'desarrollo':
+                        correct_answer_letter = answer_letter
+                    answer_letter = chr(ord(answer_letter) + 1)
+
+                if not correct_answer_letter:
+                    raise ValueError(f"La pregunta con ID {question.id} no tiene una respuesta correcta definida.")
+
+                file.write(f"ANSWER: {correct_answer_letter}\n\n")
+
 
 

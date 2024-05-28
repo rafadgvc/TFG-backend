@@ -120,6 +120,7 @@ class Question(Base):
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
+
         new_question = Question(
             title=title,
             subject_id=subject_id,

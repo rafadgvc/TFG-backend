@@ -1,3 +1,4 @@
+from flask import send_file, jsonify
 from flask_jwt_extended import jwt_required
 
 from models.exam.exam import Exam
@@ -6,7 +7,6 @@ from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.question.question_schema import QuestionListSchema
 from utils.common_schema import PaginationSchema
-from models.question_parameter.question_parameter import QuestionParameter
 
 blp = Blueprint("Exam", __name__, url_prefix="/exam")
 Session = create_db()
@@ -84,3 +84,16 @@ def select_node_questions(section_data):
         exclude_ids=section_data.get('exclude_ids', None),
 
     )
+
+
+@blp.route('/<int:id>/export_aiken', methods=["GET"])
+@jwt_required()
+def export_exam(id):
+    try:
+        # Generar el archivo Aiken
+        output_file = f"exam_{id}_aiken.txt"
+        Exam.export_exam_to_aiken(SESSION, id, output_file)
+
+        return send_file(output_file, as_attachment=True)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
