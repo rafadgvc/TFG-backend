@@ -88,7 +88,7 @@ def select_node_questions(section_data):
 
 @blp.route('/<int:id>/export_aiken', methods=["GET"])
 @jwt_required()
-def export_exam(id):
+def export_exam_to_aiken(id):
     try:
         # Generar el archivo Aiken
         output_file = f"exam_{id}_aiken.txt"
@@ -110,6 +110,18 @@ def export_exam_to_pdf(id):
         Exam.export_exam_to_pdf(SESSION, id, output_file)
 
         # Devolver el archivo PDF
+        return send_file(output_file, as_attachment=True)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+
+@blp.route('/<int:id>/export_gift', methods=["GET"])
+@jwt_required()
+def export_exam_to_gift(id):
+    try:
+        # Generar el archivo GIFT
+        output_file = f"exam_{id}_gift.txt"
+        Exam.export_exam_to_gift(SESSION, id, output_file)
+
         return send_file(output_file, as_attachment=True)
     except ValueError as e:
         return jsonify({"message": str(e)}), 400

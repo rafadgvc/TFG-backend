@@ -368,3 +368,28 @@ class Exam(Base):
 
         doc.build(content)
 
+    @staticmethod
+    def export_exam_to_gift(session, exam_id: int, output_file: str):
+        from models.answer.answer import Answer
+        user_id = get_current_user_id()
+        # Obtener el examen por ID
+        exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
+
+        if not exam:
+            raise ValueError("El examen no existe.")
+
+        # Obtener todas las preguntas y respuestas del examen
+        questions = exam.questions
+
+        with open(output_file, 'w', encoding='utf-8') as file:
+            for question in questions:
+                # Escribimos la pregunta
+                file.write(f"::Question {question.id}::{question.title} {{\n")
+
+                # Obtener las respuestas
+                answers = session.query(Answer).filter(Answer.question_id == question.id).all()
+                if question.type == 'test':
+                    for answer in answers:
+                        file.write(f"~%{answer.points*100}%{answer.body}\n")
+
+                file.write("}\n\n")
