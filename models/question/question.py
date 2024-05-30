@@ -52,6 +52,11 @@ class Question(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+    results: Mapped[Set["Result"]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     def __repr__(self):
      return "<Question(id='%s', title='%s')>" % (self.id, self.title)

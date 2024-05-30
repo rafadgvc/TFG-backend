@@ -34,6 +34,11 @@ class Exam(Base):
     created: Mapped["User"] = relationship(back_populates="exams")
     subject: Mapped["Subject"] = relationship(back_populates="exams")
     questions = relationship("Question", secondary=exam_question_association, back_populates="exams")
+    results: Mapped[Set["Result"]] = relationship(
+        back_populates="exam",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     def __repr__(self):
         return "<Exam(id='%s', title='%s')>" % (self.id, self.title)

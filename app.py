@@ -9,7 +9,8 @@ from services.question_service import blp as question_blp
 from services.subject_service import blp as subject_blp
 from services.answer_service import blp as answer_blp
 from services.node_service import blp as node_blp
-from secrets import JWT_SECRET_KEY
+from services.result_service import blp as result_blp
+from secret import JWT_SECRET_KEY
 
 app = Flask(__name__)
 app.config["API_TITLE"] = "QuestionsAPI"
@@ -44,6 +45,7 @@ api.register_blueprint(node_blp)
 api.register_blueprint(question_blp)
 api.register_blueprint(exam_blp)
 api.register_blueprint(answer_blp)
+api.register_blueprint(result_blp)
 
 
 if __name__ == '__main__':

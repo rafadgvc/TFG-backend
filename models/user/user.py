@@ -2,7 +2,7 @@ from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
 
-from secrets import PASSWORD_SALT
+from secret import PASSWORD_SALT
 
 import bcrypt
 
@@ -46,6 +46,11 @@ class User(Base):
         passive_deletes=True
     )
     exams: Mapped[Set["Exam"]] = relationship(
+        back_populates="created",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    results: Mapped[Set["Result"]] = relationship(
         back_populates="created",
         cascade="all, delete-orphan",
         passive_deletes=True
