@@ -27,3 +27,18 @@ def upload_results(csv_data):
         abort(400, message="File not found")
     except Exception as e:
         abort(400, message=str(e))
+
+@blp.route('<int:id>', methods=["DELETE"])
+@jwt_required()
+@blp.response(204)
+def delete_results_of_exam(id):
+    """ Deletes results related to an exam
+    """
+    try:
+
+        Result.delete_results_of_exam(
+            session=SESSION,
+            exam_id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))

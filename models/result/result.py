@@ -2,7 +2,7 @@ import csv
 
 import pandas as pd
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, and_, CheckConstraint
+from sqlalchemy import Integer, String, select, ForeignKey, and_, CheckConstraint, delete
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List
 from db.versions.db import Base
@@ -107,3 +107,18 @@ class Result(Base):
             return results
         except Exception as e:
             abort(400, message=str(e))
+
+    @staticmethod
+    def delete_results_of_exam(session, exam_id: int):
+        from models.exam.exam import Exam
+
+        query = select(Exam).where(Exam.id == exam_id)
+        res = session.execute(query).first()
+
+        user_id = get_current_user_id()
+        if res[0].created_by != user_id:
+            abort(401, "No tienes acceso a este recurso.")
+
+        query = delete(Result).where(Result.exam_id == exam_id)
+        session.execute(query)
+        session.commit()
