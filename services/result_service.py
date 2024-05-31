@@ -3,7 +3,9 @@ from flask_jwt_extended import jwt_required
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.result.result import Result
-from models.result.result_schema import ResultReducedSchema, ResultSchema, ResultListSchema, CSVResultSchema
+from models.result.result_schema import ResultReducedSchema, ResultSchema, ResultListSchema, CSVResultSchema, \
+    ResultDetailListSchema
+from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Result", __name__, url_prefix="/result")
 Session = create_db()
@@ -42,3 +44,17 @@ def delete_results_of_exam(id):
         )
     except Exception as e:
         abort(400, message=str(e))
+
+@blp.route('/list/<int:subject_id>', methods=["GET"])
+@jwt_required()
+@blp.arguments(PaginationSchema, location='query')
+@blp.response(200, ResultDetailListSchema)
+def get_subject_exams(pagination_params, subject_id):
+    """ Returns list of results
+    """
+    return Result.get_results_list(
+        SESSION,
+        limit=pagination_params.get('limit', None),
+        offset=pagination_params.get('offset', 0),
+        subject_id=subject_id
+    )

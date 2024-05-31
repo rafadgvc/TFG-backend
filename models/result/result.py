@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, select, ForeignKey, and_, CheckConstrain
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List
 from db.versions.db import Base
-from models.result.result_schema import ResultSchema
+from models.result.result_schema import ResultSchema, ResultListSchema, ResultDetailListSchema
 
 from utils.utils import get_current_user_id
 
@@ -88,7 +88,6 @@ class Result(Base):
 
             results = []
             for index, row in df.iterrows():
-
                 question_id = int(row['question_id'])
                 exam_id = int(row['exam_id'])
                 points = int(row['points'])
@@ -122,3 +121,44 @@ class Result(Base):
         query = delete(Result).where(Result.exam_id == exam_id)
         session.execute(query)
         session.commit()
+
+    @staticmethod
+    def get_results_list(session, subject_id: int, limit: int = None, offset: int = 0) -> ResultListSchema:
+        from models.question import Question
+        from models.exam.exam import Exam
+        from models.associations.associations import exam_question_association
+
+        user_id = get_current_user_id()
+
+        query = (
+            session.query(
+                Result.id,
+                Result.points,
+                Result.time,
+                Result.taker,
+                Result.exam_id,
+                Result.question_id,
+                Question.title.label('question_title'),
+                Exam.title.label('exam_title'),
+
+            )
+            .join(Exam, Result.exam_id == Exam.id)
+            .join(Question, Result.question_id == Question.id)
+            .filter(Result.created_by == user_id)
+            .filter(Question.subject_id == subject_id)
+            .offset(offset)
+        )
+
+        if limit:
+            query = query.limit(limit)
+
+        res = session.execute(query)
+
+        items = []
+        total = 0
+        for item in query:
+            items.append(item._mapping)
+            total += 1
+
+        schema = ResultDetailListSchema()
+        return schema.dump({"items": items, "total": total})

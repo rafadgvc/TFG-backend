@@ -49,16 +49,17 @@ class Exam(Base):
         Calcula si la pregunta tiene resultados asociados.
         """
 
-        # TODO: Cambiar a comprobación real
-        return not bool(self.id % 3 == 0)
+        return sum(result.id for result in self.results) > 0
 
     @connected.expression
     def connected(cls):
         """
         Expresión SQLAlchemy para calcular si el examen tiene resultados asociados.
         """
-        # TODO: Cambiar a comprobación real
-        return ~func.exists().where(cls.id % 3 == 0)
+        from models.result.result import Result
+
+        return select([func.count(Result.id)]).where(
+            Result.exam_id == cls.id).label("connected") > 0
 
     @hybrid_property
     def difficulty(self):
