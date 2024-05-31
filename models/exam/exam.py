@@ -16,7 +16,7 @@ from models.node.node import Node
 from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
 from models.subject.subject import Subject
 from models.user.user import User
-from utils.utils import get_current_user_id
+from utils.utils import get_current_user_id, replace_parameters
 from models.associations.associations import exam_question_association
 
 
@@ -318,26 +318,47 @@ class Exam(Base):
         if not exam:
             raise ValueError("El examen no existe.")
 
-        # Obtener todas las preguntas y respuestas del examen
-        questions = exam.questions
+        exam_data = Exam.get_exam(session, exam_id)
+        questions = exam_data['questions']['items']
+        question_number = 0
+
 
         with open(output_file, 'w', encoding='utf-8') as file:
             for question in questions:
-                file.write(f"{question.title}\n")
-                answers = session.query(Answer).filter(Answer.question_id == question.id).all()
+                question_number += 1
+                raw_parameters = [{
+                    'value': param['value'], 'group': param['group']
+                } for param in question.get('question_parameters', {}).get('items', [])]
+                parameters = []
+                if raw_parameters != parameters:
+                    random_group = random.choice(raw_parameters)
+                    for param in raw_parameters:
+                        if param['group'] == random_group['group']:
+                            parameters.append(param['value'])
+                    question_title = replace_parameters(question['title'], parameters)
+                else:
+                    question_title = question['title']
+
+                file.write(f"{question_title}\n")
                 answer_letter = 'A'
                 correct_answer_letter = None
 
-                for answer in answers:
-                    file.write(f"{answer_letter}. {answer.body}\n")
-                    if answer.points == 1 or question.type == 'desarrollo':
-                        correct_answer_letter = answer_letter
-                    answer_letter = chr(ord(answer_letter) + 1)
+                if 'answers' in question and question['type'] == 'test':
+                    answers = question['answers']['items']
+                    for answer in answers:
+                        if raw_parameters != parameters:
+                            answer_body = replace_parameters(answer['body'], parameters)
+                        else:
+                            answer_body = answer['body']
+                        file.write(f"{answer_letter}. {answer_body}\n")
+                        if answer['points'] == 1:
+                            correct_answer_letter = answer_letter
+                        answer_letter = chr(ord(answer_letter) + 1)
 
-                if not correct_answer_letter:
-                    raise ValueError(f"La pregunta con ID {question.id} no tiene una respuesta correcta definida.")
+                    if not correct_answer_letter:
+                        raise ValueError(f"La pregunta con ID {question.id} no tiene una respuesta correcta definida.")
 
-                file.write(f"ANSWER: {correct_answer_letter}\n\n")
+                    file.write(f"ANSWER: {correct_answer_letter}\n\n")
 
     @staticmethod
     def export_exam_to_pdf(session, exam_id, output_file):
@@ -351,7 +372,6 @@ class Exam(Base):
 
         # Encabezado
         exam_title = exam_data['title']
-        subject_name = 'Asignatura'
         header = Paragraph(exam_title, styles['Title'])
 
         # Contenido
@@ -360,12 +380,28 @@ class Exam(Base):
         question_number = 0
         for question in questions:
             question_number += 1
-            question_text = f"<b>{question_number}. {question['title']}</b><br/>"
+            raw_parameters = [{
+                'value': param['value'], 'group': param['group']
+            } for param in question.get('question_parameters', {}).get('items', [])]
+            parameters = []
+            if raw_parameters != parameters:
+                random_group = random.choice(raw_parameters)
+                for param in raw_parameters:
+                    if param['group'] == random_group['group']:
+                        parameters.append(param['value'])
+                question_title = replace_parameters(question['title'], parameters)
+            else:
+                question_title = question['title']
+            question_text = f"<b>{question_number}. {question_title}</b><br/>"
             content.append(Paragraph(question_text, styles['Normal']))
             if 'answers' in question and question['type'] == 'test':
                 answers = question['answers']['items']
                 for answer in answers:
-                    content.append(Paragraph(answer['body'], styles['Normal']))
+                    if raw_parameters != parameters:
+                        answer_body = replace_parameters(answer['body'], parameters)
+                    else:
+                        answer_body = answer['body']
+                    content.append(Paragraph(answer_body, styles['Normal']))
             content.append(Spacer(1, 12))
             content.append(Spacer(1, 12))
 
@@ -381,18 +417,37 @@ class Exam(Base):
         if not exam:
             raise ValueError("El examen no existe.")
 
-        # Obtener todas las preguntas y respuestas del examen
-        questions = exam.questions
+        exam_data = Exam.get_exam(session, exam_id)
+
+        questions = exam_data['questions']['items']
+        question_number = 0
 
         with open(output_file, 'w', encoding='utf-8') as file:
             for question in questions:
+                question_number += 1
+                raw_parameters = [{
+                    'value': param['value'], 'group': param['group']
+                } for param in question.get('question_parameters', {}).get('items', [])]
+                parameters = []
+                if raw_parameters != parameters:
+                    random_group = random.choice(raw_parameters)
+                    for param in raw_parameters:
+                        if param['group'] == random_group['group']:
+                            parameters.append(param['value'])
+                    question_title = replace_parameters(question['title'], parameters)
+                else:
+                    question_title = question['title']
                 # Escribimos la pregunta
-                file.write(f"::Question {question.id}::{question.title} {{\n")
+                file.write(f"::Question {question['id']}::{question_title} {{\n")
 
                 # Obtener las respuestas
-                answers = session.query(Answer).filter(Answer.question_id == question.id).all()
-                if question.type == 'test':
+                if 'answers' in question and question['type'] == 'test':
+                    answers = question['answers']['items']
                     for answer in answers:
-                        file.write(f"~%{answer.points*100}%{answer.body}\n")
+                        if raw_parameters != parameters:
+                            answer_body = replace_parameters(answer['body'], parameters)
+                        else:
+                            answer_body = answer['body']
+                        file.write(f"~%{answer['points']*100}%{answer_body}\n")
 
                 file.write("}\n\n")
