@@ -6,7 +6,7 @@ from typing import Set
 
 from db.versions.db import Base
 from models.node.node_schema import NodeSchema, NodeListSchema
-from models.question.question_schema import FullQuestionListSchema, FullQuestionSchema, QuestionSchema
+from models.question.question_schema import FullQuestionListSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id

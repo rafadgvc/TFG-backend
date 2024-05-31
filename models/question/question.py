@@ -1,7 +1,7 @@
 from enum import Enum
 
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func
+from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Boolean, func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
@@ -9,7 +9,7 @@ from typing import Set, List
 from db.versions.db import Base
 from models.answer.answer_schema import AnswerListSchema
 from models.node.node import Node
-from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema, \
+from models.question.question_schema import QuestionListSchema, FullQuestionSchema, \
     FullQuestionListSchema
 from models.subject.subject import Subject
 from models.user.user import User

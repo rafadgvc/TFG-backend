@@ -1,8 +1,7 @@
 import random
 
-import sqlalchemy
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, delete, CheckConstraint, and_
+from sqlalchemy import Integer, String, select, ForeignKey, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.versions.db import Base

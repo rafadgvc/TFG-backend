@@ -13,22 +13,6 @@ Session = create_db()
 SESSION = Session()
 
 
-@blp.route('<int:id>', methods=["GET"])
-@jwt_required()
-@blp.response(200, QuestionSchema)
-def get_question(id):
-    """ Returns question
-    """
-    # TODO: Check if a user is logged and owns the question
-    try:
-
-        return Question.get_question(
-            SESSION,
-            id=id
-        )
-    except Exception as e:
-        abort(400, message=str(e))
-
 
 @blp.route('', methods=["POST"])
 @jwt_required()

@@ -4,16 +4,14 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from flask import abort
-from sqlalchemy import Integer, String, ForeignKey, delete, and_, CheckConstraint, Table, Column, Boolean, func, select, \
-    or_, distinct, not_
+from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
 
 from db.versions.db import Base
 from models.exam.exam_schema import FullExamSchema, ExamListSchema
-from models.node.node import Node
-from models.question.question_schema import QuestionSchema, QuestionListSchema, FullQuestionSchema
+from models.question.question_schema import QuestionListSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id, replace_parameters

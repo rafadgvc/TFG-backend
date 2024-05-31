@@ -1,7 +1,7 @@
 from typing import Set
 
 from flask import abort
-from sqlalchemy import Integer, String, select, delete, ForeignKey, func, or_, distinct, null
+from sqlalchemy import Integer, String, select, delete, ForeignKey, func, or_
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.versions.db import Base
