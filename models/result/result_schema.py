@@ -2,7 +2,7 @@ from marshmallow import Schema, fields, post_dump, EXCLUDE
 
 
 class CSVResultSchema(Schema):
-    path = fields.String()
+    file = fields.Raw(type='file', required=True)
 
     class Meta:
         unknown = EXCLUDE

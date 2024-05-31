@@ -13,18 +13,18 @@ SESSION = Session()
 
 
 @blp.route('/upload', methods=["POST"])
-@blp.arguments(CSVResultSchema)
 @jwt_required()
 @blp.response(200, ResultListSchema)
-def upload_results(csv_data):
+def upload_results():
     """ Uploads a CSV file and adds results """
-    if 'path' not in csv_data:
-        abort(400, message="Path not provided in CSV data")
+    if 'file' not in request.files:
+        abort(400, message="CSV file not provided")
+
+    file = request.files['file']
 
     try:
-        with open(csv_data['path'], 'r') as file:
-            results = Result.insert_results_from_csv(session=SESSION, file=file)
-            return {"items": results}, 200
+        results = Result.insert_results_from_csv(session=SESSION, file=file)
+        return {"items": results}, 200
     except FileNotFoundError:
         abort(400, message="File not found")
     except Exception as e:

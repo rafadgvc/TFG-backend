@@ -46,10 +46,9 @@ class Exam(Base):
     @hybrid_property
     def connected(self):
         """
-        Calcula si la pregunta tiene resultados asociados.
+        Calcula si el examen tiene resultados asociados.
         """
-
-        return sum(result.id for result in self.results) > 0
+        return len(self.results) > 0
 
     @connected.expression
     def connected(cls):
@@ -57,9 +56,7 @@ class Exam(Base):
         Expresión SQLAlchemy para calcular si el examen tiene resultados asociados.
         """
         from models.result.result import Result
-
-        return select([func.count(Result.id)]).where(
-            Result.exam_id == cls.id).label("connected") > 0
+        return select([func.count(Result.id)]).where(Result.exam_id == cls.id).label("connected") > 0
 
     @hybrid_property
     def difficulty(self):
