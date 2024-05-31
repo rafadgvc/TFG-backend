@@ -7,7 +7,6 @@ from services.user_service import blp as user_blp
 from services.exam_service import blp as exam_blp
 from services.question_service import blp as question_blp
 from services.subject_service import blp as subject_blp
-from services.answer_service import blp as answer_blp
 from services.node_service import blp as node_blp
 from services.result_service import blp as result_blp
 from secret import JWT_SECRET_KEY
@@ -25,7 +24,7 @@ app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=2)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 jwt = JWTManager(app)
 
 
@@ -44,7 +43,6 @@ api.register_blueprint(subject_blp)
 api.register_blueprint(node_blp)
 api.register_blueprint(question_blp)
 api.register_blueprint(exam_blp)
-api.register_blueprint(answer_blp)
 api.register_blueprint(result_blp)
 
 
