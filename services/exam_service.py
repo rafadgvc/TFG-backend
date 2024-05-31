@@ -86,6 +86,22 @@ def select_node_questions(section_data):
     )
 
 
+@blp.route('<int:id>', methods=["DELETE"])
+@jwt_required()
+@blp.response(204)
+def delete_exam(id):
+    """ Deletes exam
+    """
+    try:
+
+        Exam.delete_exam(
+            SESSION,
+            exam_id=id
+        )
+    except Exception as e:
+        abort(400, message=str(e))
+
+
 @blp.route('/<int:id>/export_aiken', methods=["GET"])
 @jwt_required()
 def export_exam_to_aiken(id):

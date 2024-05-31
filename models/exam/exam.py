@@ -309,8 +309,28 @@ class Exam(Base):
         return schema.dump({"items": questions, "total": total})
 
     @staticmethod
+    def delete_exam(session, exam_id: int):
+        from models.associations.associations import exam_question_association
+        query = select(Exam).where(Exam.id == exam_id)
+        res = session.execute(query).first()
+        if not res:
+            abort(400, "El examen no ha sido encontrado.")
+        exam_data = Exam.get_exam(session, exam_id)
+        if exam_data['connected'] == True:
+            abort(401, "El examen tiene resultados asociados.")
+
+
+        query = delete(exam_question_association).where(exam_question_association.c.exam_id == exam_id)
+        session.execute(query)
+        session.commit()
+
+        query = delete(Exam).where(Exam.id == exam_id)
+        session.execute(query)
+        session.commit()
+
+
+    @staticmethod
     def export_exam_to_aiken(session, exam_id: int, output_file: str):
-        from models.answer.answer import Answer
         user_id = get_current_user_id()
         # Obtener el examen por ID
         exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
