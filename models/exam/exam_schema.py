@@ -33,7 +33,7 @@ class ExamSummarySchema(Schema):
 
 class SectionSchema(Schema):
     id = fields.Integer()
-    node_id = fields.Integer()
+    node_ids = fields.List(fields.Integer())
     question_number = fields.Integer()
     time = fields.Integer()
     difficulty = fields.Integer()

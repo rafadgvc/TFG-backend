@@ -337,7 +337,7 @@ class Exam(Base):
     @staticmethod
     def get_questions_to_select(
             session,
-            node_id: int,
+            node_ids: list[int],
             question_number: int = None,
             type: list[str] = None,
             time: int = None,
@@ -354,7 +354,7 @@ class Exam(Base):
         query = select(Question).join(node_question_association).where(
             and_(
                 Question.created_by == current_user_id,
-                node_question_association.c.node_id == node_id
+                node_question_association.c.node_id.in_(node_ids)
             )
         ).offset(offset)
 

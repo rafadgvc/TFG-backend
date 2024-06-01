@@ -71,12 +71,12 @@ def get_subject_exams(pagination_params, subject_id):
 @jwt_required()
 @blp.arguments(SectionSchema, location='query')
 @blp.response(200, QuestionListSchema)
-def select_node_questions(section_data):
-    """ Returns questions that belong to the current user and a specific subject
+def select_nodes_questions(section_data):
+    """ Returns questions depending on a few parameters
     """
     return Exam.get_questions_to_select(
         SESSION,
-        node_id=section_data.get('node_id'),
+        node_ids=section_data.get('node_ids'),
         time=section_data.get('time', None),
         difficulty=section_data.get('difficulty', None),
         repeat=section_data.get('repeat', None),
