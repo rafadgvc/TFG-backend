@@ -127,6 +127,7 @@ class Exam(Base):
             title: str,
             subject_id: int,
             question_ids: List[int],
+            questions
     ) -> FullExamSchema:
         from models.question.question import Question
         user_id = get_current_user_id()
@@ -148,16 +149,10 @@ class Exam(Base):
         )
 
 
-        # Asignar preguntas al examen
-        for question_id in question_ids:
-            query = select(Question).where(Question.id == question_id)
-            question = session.execute(query).first()
-            if not question:
-                abort(400, f"La pregunta con el ID {question_id} no fue encontrada.")
-            new_exam.questions.append(question[0])
 
         session.add(new_exam)
         session.commit()
+
         exam_data = {
             "id": new_exam.id,
             "title": new_exam.title,
@@ -167,6 +162,22 @@ class Exam(Base):
                 "total": 0
             }
         }
+        # Asignar preguntas al examen
+        for question in questions:
+            query = select(Question).where(Question.id == question['id'])
+            res = session.execute(query).first()
+            if not res:
+                abort(400, f"La pregunta con el ID {question['id']} no fue encontrada.")
+
+            # Añadir a la asociación con la sección correspondiente
+            association = exam_question_association.insert().values(
+                exam_id=new_exam.id,
+                question_id=question['id'],
+                section_id=question['section_number']
+            )
+            session.execute(association)
+            session.commit()
+
         for question in new_exam.questions:
             question_data = Question.get_full_question(session, question.id)
             if question_data:
@@ -174,11 +185,12 @@ class Exam(Base):
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
         return exam_data
-        return schema
 
     @staticmethod
     def get_exam(session, id: int) -> FullExamSchema:
         from models.question.question import Question
+        from models.associations.associations import exam_question_association  # Importa la asociación
+
         query = select(Exam).where(Exam.id == id)
         res = session.execute(query).first()
 
@@ -199,12 +211,25 @@ class Exam(Base):
                 "total": 0
             }
         }
+
         for question in exam.questions:
             question_data = Question.get_full_question(session, question.id)
             if question_data:
+                # Obtener el número de sección para esta pregunta
+                section_query = select(exam_question_association.c.section_id).where(
+                    and_(
+                        exam_question_association.c.exam_id == exam.id,
+                        exam_question_association.c.question_id == question.id
+                    )
+                )
+                section_result = session.execute(section_query).first()
+                if section_result:
+                    question_data['section_number'] = section_result[0]
+
                 question_data['answers'] = Question.get_answers_for_question(session, question.id)
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
+
         return exam_data
 
     @staticmethod
@@ -249,6 +274,65 @@ class Exam(Base):
 
         schema = ExamListSchema()
         return schema.dump({"items": items, "total": total})
+
+    @staticmethod
+    def edit_exam(
+            session,
+            exam_id: int,
+            title: str,
+            questions
+    ) -> FullExamSchema:
+        from models.question.question import Question
+        user_id = get_current_user_id()
+        query = select(Exam).where(
+            and_(
+                Exam.id == exam_id,
+                Exam.created_by == user_id
+            )
+        )
+        exam = session.execute(query).scalar_one_or_none()
+
+        if not exam:
+            abort(400, "El examen con el ID no ha sido encontrada.")
+
+        exam.title = title
+        query = delete(exam_question_association).where(exam_question_association.c.exam_id == exam_id)
+        session.execute(query)
+        session.commit()
+
+        exam_data = {
+            "id": exam.id,
+            "title": exam.title,
+            "subject_id": exam.subject_id,
+            "questions": {
+                "items": [],
+                "total": 0
+            }
+        }
+        # Asignar preguntas al examen
+        for question in questions:
+            query = select(Question).where(Question.id == question['id'])
+            res = session.execute(query).first()
+            if not res:
+                abort(400, f"La pregunta con el ID {question['id']} no fue encontrada.")
+
+            # Añadir a la asociación con la sección correspondiente
+            association = exam_question_association.insert().values(
+                exam_id=exam.id,
+                question_id=question['id'],
+                section_id=question['section_number']
+            )
+            session.execute(association)
+        session.commit()
+
+        for question in exam.questions:
+            question_data = Question.get_full_question(session, question.id)
+            if question_data:
+                question_data['answers'] = Question.get_answers_for_question(session, question.id)
+                exam_data['questions']['items'].append(question_data)
+                exam_data['questions']['total'] += 1
+        return exam_data
+
 
     @staticmethod
     def get_questions_to_select(

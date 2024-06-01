@@ -44,7 +44,8 @@ def add_exam(exam_data):
             session=SESSION,
             title=exam.get('title'),
             subject_id=exam.get('subject_id'),
-            question_ids=question_ids
+            question_ids=question_ids,
+            questions=exam.get('questions').get('items'),
         )
 
         return new_exam
@@ -141,3 +142,24 @@ def export_exam_to_gift(id):
         return send_file(output_file, as_attachment=True)
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
+
+
+@blp.route('<int:exam_id>', methods=["PUT"])
+@jwt_required()
+@blp.arguments(FullExamSchema)
+@blp.response(200, FullExamSchema)
+def edit_exam(exam_data, exam_id):
+    """ Updates an exam and returns the updated exam
+    """
+    try:
+
+        exam = FullExamSchema().load(exam_data)
+        updated_exam = Exam.edit_exam(
+            session=SESSION,
+            exam_id=exam_id,
+            title=exam.get('title'),
+            questions=exam.get('questions').get('items'),
+        )
+        return updated_exam
+    except Exception as e:
+        abort(400, message=str(e))

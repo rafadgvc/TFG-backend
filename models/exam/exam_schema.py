@@ -5,6 +5,7 @@ class ExamSchema(Schema):
     title = fields.String()
     subject_id = fields.Integer()
     question_ids = fields.List(fields.Integer())
+    questions = fields.Nested(FullQuestionListSchema)
     class Meta:
         unknown = EXCLUDE
 

@@ -12,5 +12,6 @@ exam_question_association = Table(
     'exam_question_association',
     Base.metadata,
     Column('question_id', Integer, ForeignKey('question.id')),
-    Column('exam_id', Integer, ForeignKey('exam.id'))
+    Column('exam_id', Integer, ForeignKey('exam.id')),
+    Column('section_id', Integer, nullable=False)
 )

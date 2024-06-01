@@ -258,7 +258,6 @@ class Question(Base):
         res = session.execute(query).first()
 
         user_id = get_current_user_id()
-        # TODO: Comprobar que la pregunta existe
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
