@@ -1,5 +1,6 @@
 import random
 
+from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -553,3 +554,59 @@ class Exam(Base):
                         file.write(f"~%{answer['points']*100}%{answer_body}\n")
 
                 file.write("}\n\n")
+
+    @staticmethod
+    def export_exam_to_moodlexml(session, exam_id: int, output_file: str):
+        from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
+        user_id = get_current_user_id()
+        exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
+
+        if not exam:
+            raise ValueError("El examen no existe.")
+
+        exam_data = Exam.get_exam(session, exam_id)
+        questions = exam_data['questions']['items']
+
+        quiz = Element('quiz')
+
+        for question in questions:
+            raw_parameters = [{
+                'value': param['value'], 'group': param['group']
+            } for param in question.get('question_parameters', {}).get('items', [])]
+            parameters = []
+            if raw_parameters != parameters:
+                random_group = random.choice(raw_parameters)
+                for param in raw_parameters:
+                    if param['group'] == random_group['group']:
+                        parameters.append(param['value'])
+                question_title = replace_parameters(question['title'], parameters)
+            else:
+                question_title = question['title']
+            if question['type'] == 'test':
+                question_element = SubElement(quiz, 'question', type='multichoice')
+            else:
+                question_element = SubElement(quiz, 'question', type='essay')
+            name = SubElement(question_element, 'name')
+            text = SubElement(name, 'text')
+            text.text = question_title
+
+            question_text = SubElement(question_element, 'questiontext', format='html')
+            text = SubElement(question_text, 'text')
+            text.text = question['title']
+
+            if 'answers' in question and question['type'] == 'test':
+                for answer in question['answers']['items']:
+                    if raw_parameters != parameters:
+                        answer_body = replace_parameters(answer['body'], parameters)
+                    else:
+                        answer_body = answer['body']
+                    answer_element = SubElement(question_element, 'answer', fraction=str(int(answer['points'] * 100)))
+                    text = SubElement(answer_element, 'text')
+                    text.text = answer_body
+            else:
+                answer_element = SubElement(question_element, 'answer', fraction='0')
+                text = SubElement(answer_element, 'text')
+                text.text = ''
+
+        tree = ElementTree(quiz)
+        tree.write(output_file, encoding='utf-8', xml_declaration=True)

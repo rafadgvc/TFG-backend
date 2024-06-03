@@ -143,6 +143,19 @@ def export_exam_to_gift(id):
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
 
+@blp.route('/<int:id>/export_moodlexml', methods=["GET"])
+@jwt_required()
+def export_exam_to_moodlexml(id):
+    try:
+        # Generar el archivo MoodleXML
+        output_file = f"exam_{id}_moodlexml.xml"
+        Exam.export_exam_to_moodlexml(SESSION, id, output_file)
+
+        return send_file(output_file, as_attachment=True)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+
+
 
 @blp.route('<int:exam_id>', methods=["PUT"])
 @jwt_required()
