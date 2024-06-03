@@ -2,9 +2,8 @@ from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.user.user import User
 from models.user.user_schema import UserRestrictedSchema, UserLoginSchema, UserSignUpSchema, FullUserSchema, AccessTokenSchema
-from flask import jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies, \
-    unset_jwt_cookies
+from flask import jsonify
+from flask_jwt_extended import create_access_token, jwt_required, set_access_cookies, unset_jwt_cookies
 import bcrypt
 
 

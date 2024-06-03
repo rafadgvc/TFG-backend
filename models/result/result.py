@@ -1,5 +1,3 @@
-import csv
-
 import pandas as pd
 from flask import abort
 from sqlalchemy import Integer, String, select, ForeignKey, and_, CheckConstraint, delete

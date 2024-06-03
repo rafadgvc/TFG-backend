@@ -1,7 +1,6 @@
 from flask_jwt_extended import jwt_required
 
-from models.question.question_schema import QuestionSchema, QuestionListSchema, QuestionReducedSchema, \
-    FullQuestionSchema
+from models.question.question_schema import QuestionListSchema, QuestionReducedSchema, FullQuestionSchema
 from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db

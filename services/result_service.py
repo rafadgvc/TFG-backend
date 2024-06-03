@@ -3,8 +3,7 @@ from flask_jwt_extended import jwt_required
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.result.result import Result
-from models.result.result_schema import ResultReducedSchema, ResultSchema, ResultListSchema, CSVResultSchema, \
-    ResultDetailListSchema
+from models.result.result_schema import ResultListSchema, ResultDetailListSchema
 from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Result", __name__, url_prefix="/result")
