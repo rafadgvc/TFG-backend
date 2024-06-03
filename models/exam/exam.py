@@ -3,7 +3,7 @@ import random
 from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from flask import abort
 from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -465,10 +465,13 @@ class Exam(Base):
 
     @staticmethod
     def export_exam_to_pdf(session, exam_id, output_file):
+        from models.subject.subject import Subject
         exam_data = Exam.get_exam(session, exam_id)
 
         if not exam_data:
             raise ValueError("El examen no existe.")
+
+        subject_data = Subject.get_subject(session, exam_data['subject_id'])
 
         doc = SimpleDocTemplate(output_file, pagesize=letter)
         styles = getSampleStyleSheet()
@@ -476,13 +479,28 @@ class Exam(Base):
         # Encabezado
         exam_title = exam_data['title']
         header = Paragraph(exam_title, styles['Title'])
+        subheader = Paragraph(subject_data.name, ParagraphStyle(
+            name='Subheader',
+            parent=styles['Heading2'],
+            alignment=1
+            )
+        )
 
         # Contenido
-        content = [header, Spacer(1, 40)]
+        content = [header, Spacer(1, 0), subheader, Spacer(1, 30)]
         questions = exam_data['questions']['items']
         question_number = 0
+        current_section = None
         for question in questions:
             question_number += 1
+
+            section = question['section_number']
+            if section != current_section:
+                current_section = section
+                section_title = f"Sección {current_section}"
+                content.append(Paragraph(section_title, styles['Heading2']))
+                content.append(Spacer(1, 10))
+
             raw_parameters = [{
                 'value': param['value'], 'group': param['group']
             } for param in question.get('question_parameters', {}).get('items', [])]
@@ -499,12 +517,17 @@ class Exam(Base):
             content.append(Paragraph(question_text, styles['Normal']))
             if 'answers' in question and question['type'] == 'test':
                 answers = question['answers']['items']
+                answer_letter = 'A'
+
                 for answer in answers:
+
                     if raw_parameters != parameters:
                         answer_body = replace_parameters(answer['body'], parameters)
                     else:
                         answer_body = answer['body']
+                    answer_body = answer_letter + '. ' + answer_body
                     content.append(Paragraph(answer_body, styles['Normal']))
+                    answer_letter = chr(ord(answer_letter) + 1)
             content.append(Spacer(1, 12))
             content.append(Spacer(1, 12))
 
