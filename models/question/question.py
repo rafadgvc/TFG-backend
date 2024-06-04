@@ -1,4 +1,5 @@
 from enum import Enum
+import pandas as pd
 
 from flask import abort
 from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Boolean, func
@@ -432,4 +433,91 @@ class Question(Base):
             }
         )
 
+    @staticmethod
+    def insert_questions_from_csv(
+            session,
+            file,
+            subject_id: int,
+            time: int = 1,
+            difficulty: int = 1
+    ) -> FullQuestionListSchema:
+        from models.answer.answer import Answer
+        try:
+            # Intenta leer el archivo CSV con diferentes codificaciones
+            try:
+                df = pd.read_csv(file, dtype='object', encoding='utf-8')
+            except UnicodeDecodeError:
+                df = pd.read_csv(file, dtype='object', encoding='latin1')
 
+            user_id = get_current_user_id()
+
+            query = select(Subject).where(
+                and_(
+                    Subject.id == subject_id,
+                    Subject.created_by == user_id
+                )
+            )
+            subject = session.execute(query).first()
+
+            if not subject:
+                abort(400, "La asignatura con el ID no ha sido encontrada.")
+
+            questions = []
+
+            for index, row in df.iterrows():
+                title = str(row['title'])
+                type = str(row['type']).lower()
+
+                new_question = Question(
+                    title=title,
+                    subject_id=subject_id,
+                    created_by=user_id,
+                    time=time,
+                    difficulty=difficulty,
+                    type=type,
+                    active=True
+                )
+
+                session.add(new_question)
+                session.commit()
+
+                # Insertar respuestas asociadas a la pregunta
+                answer_index = 1
+                while f'answer{answer_index}' in row:
+                    answer_text = row.get(f'answer{answer_index}')
+                    points_text = row.get(f'points{answer_index}')
+
+                    if pd.notna(answer_text) and pd.notna(points_text):
+                        answer = Answer(
+                            body=answer_text,
+                            question_id=new_question.id,
+                            created_by=user_id,
+                            points=int(points_text)
+                        )
+                        session.add(answer)
+
+                    answer_index += 1
+
+                session.commit()
+
+                question_schema = FullQuestionSchema()
+                question_data = question_schema.dump(
+                    {
+                        "id": new_question.id,
+                        "title": new_question.title,
+                        "subject_id": new_question.subject_id,
+                        "time": new_question.time,
+                        "difficulty": new_question.difficulty,
+                        "type": new_question.type,
+                        "active": new_question.active,
+                        "connected": new_question.connected
+                    }
+                )
+                questions.append(question_data)
+
+            schema = FullQuestionListSchema()
+            return schema.dump({"items": questions})
+
+        except Exception as e:
+            session.rollback()
+            abort(400, message=str(e))

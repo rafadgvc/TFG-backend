@@ -66,5 +66,8 @@ class FullQuestionListSchema(Schema):
         return data
 
 
-
+class ImportQuestionSchema(Schema):
+    subject_id = fields.Integer()
+    time = fields.Integer()
+    difficulty = fields.Integer()
 

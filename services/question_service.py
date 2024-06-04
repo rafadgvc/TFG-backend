@@ -1,6 +1,8 @@
+from flask import request
 from flask_jwt_extended import jwt_required
 
-from models.question.question_schema import QuestionListSchema, QuestionReducedSchema, FullQuestionSchema
+from models.question.question_schema import QuestionListSchema, QuestionReducedSchema, FullQuestionSchema, \
+    ImportQuestionSchema
 from models.question.question import Question
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
@@ -157,5 +159,30 @@ def update_question(question_data, question_id):
             answers_data=question_data.get('answers', {}).get('items', [])
         )
         return updated_question
+    except Exception as e:
+        abort(400, message=str(e))
+
+@blp.route('/upload', methods=["POST"])
+@jwt_required()
+@blp.arguments(ImportQuestionSchema, location='query')
+@blp.response(200, QuestionListSchema)
+def upload_questions(import_data):
+    """ Uploads a CSV file and adds results """
+    if 'file' not in request.files:
+        abort(400, message="CSV file not provided")
+
+    file = request.files['file']
+
+    try:
+        questions = Question.insert_questions_from_csv(
+            session=SESSION,
+            file=file,
+            subject_id=import_data.get('subject_id'),
+            difficulty=import_data.get('difficulty', 1),
+            time=import_data.get('time', 1),
+        )
+        return {"items": questions}, 200
+    except FileNotFoundError:
+        abort(400, message="File not found")
     except Exception as e:
         abort(400, message=str(e))
