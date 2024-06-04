@@ -428,40 +428,41 @@ class Exam(Base):
 
         with open(output_file, 'w', encoding='utf-8') as file:
             for question in questions:
-                question_number += 1
-                raw_parameters = [{
-                    'value': param['value'], 'group': param['group']
-                } for param in question.get('question_parameters', {}).get('items', [])]
-                parameters = []
-                if raw_parameters != parameters:
-                    random_group = random.choice(raw_parameters)
-                    for param in raw_parameters:
-                        if param['group'] == random_group['group']:
-                            parameters.append(param['value'])
-                    question_title = replace_parameters(question['title'], parameters)
-                else:
-                    question_title = question['title']
+                if question['type'] == 'test':
+                    question_number += 1
+                    raw_parameters = [{
+                        'value': param['value'], 'group': param['group']
+                    } for param in question.get('question_parameters', {}).get('items', [])]
+                    parameters = []
+                    if raw_parameters != parameters:
+                        random_group = random.choice(raw_parameters)
+                        for param in raw_parameters:
+                            if param['group'] == random_group['group']:
+                                parameters.append(param['value'])
+                        question_title = replace_parameters(question['title'], parameters)
+                    else:
+                        question_title = question['title']
 
-                file.write(f"{question_title}\n")
-                answer_letter = 'A'
-                correct_answer_letter = None
+                    file.write(f"{question_title}\n")
+                    answer_letter = 'A'
+                    correct_answer_letter = None
 
-                if 'answers' in question and question['type'] == 'test':
-                    answers = question['answers']['items']
-                    for answer in answers:
-                        if raw_parameters != parameters:
-                            answer_body = replace_parameters(answer['body'], parameters)
-                        else:
-                            answer_body = answer['body']
-                        file.write(f"{answer_letter}. {answer_body}\n")
-                        if answer['points'] == 1:
-                            correct_answer_letter = answer_letter
-                        answer_letter = chr(ord(answer_letter) + 1)
+                    if 'answers' in question and question['type'] == 'test':
+                        answers = question['answers']['items']
+                        for answer in answers:
+                            if raw_parameters != parameters:
+                                answer_body = replace_parameters(answer['body'], parameters)
+                            else:
+                                answer_body = answer['body']
+                            file.write(f"{answer_letter}. {answer_body}\n")
+                            if answer['points'] == 1:
+                                correct_answer_letter = answer_letter
+                            answer_letter = chr(ord(answer_letter) + 1)
 
-                    if not correct_answer_letter:
-                        raise ValueError(f"La pregunta con ID {question.id} no tiene una respuesta correcta definida.")
+                        if not correct_answer_letter:
+                            raise ValueError(f"La pregunta con ID {question.id} no tiene una respuesta correcta definida.")
 
-                    file.write(f"ANSWER: {correct_answer_letter}\n\n")
+                        file.write(f"ANSWER: {correct_answer_letter}\n\n")
 
     @staticmethod
     def export_exam_to_pdf(session, exam_id, output_file):
