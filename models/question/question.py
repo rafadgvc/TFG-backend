@@ -144,6 +144,10 @@ class Question(Base):
             if not node:
                 abort(400, f"El nodo con el ID {node_id} no fue encontrado.")
             new_question.nodes.append(node[0])
+            parent_node = node[0]
+            while parent_node.parent:
+                new_question.nodes.append(parent_node.parent)
+                parent_node = parent_node.parent
 
         session.add(new_question)
         session.commit()
@@ -388,6 +392,10 @@ class Question(Base):
         question.type = type.lower()
         question.active = active
 
+        query = delete(node_question_association).where(node_question_association.c.question_id == question_id)
+        session.execute(query)
+        session.commit()
+
         question.nodes = []
         for node_id in node_ids:
             query = select(Node).where(Node.id == node_id)
@@ -395,6 +403,10 @@ class Question(Base):
             if not node:
                 abort(400, f"El nodo con el ID {node_id} no fue encontrado.")
             question.nodes.append(node[0])
+            parent_node = node[0]
+            while parent_node.parent:
+                question.nodes.append(parent_node.parent)
+                parent_node = parent_node.parent
 
         session.query(QuestionParameter).filter_by(question_id=question_id).delete()
         for param in question_parameters_data:

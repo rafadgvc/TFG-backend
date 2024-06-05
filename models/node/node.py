@@ -1,5 +1,5 @@
 from flask import abort
-from sqlalchemy import Integer, String, select, ForeignKey, and_, delete, func, null
+from sqlalchemy import Integer, String, select, ForeignKey, and_, delete, func, null, exists
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set
@@ -46,14 +46,14 @@ class Node(Base):
         """
         Calcula si el nodo tiene hijos.
         """
-        return not bool(self.children)
+        return len(self.children) == 0
 
     @leaf.expression
     def leaf(cls):
         """
         Expresión SQLAlchemy para calcular si el nodo tiene hijos.
         """
-        return ~func.exists().where(cls.id == cls.parent_id)
+        return func.count(cls.children) == 0
 
     @hybrid_property
     def root(self):
