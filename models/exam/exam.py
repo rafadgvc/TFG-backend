@@ -1,5 +1,8 @@
 import random
 from datetime import datetime, timedelta
+from odf.opendocument import OpenDocumentText
+from odf.text import H, P, Span
+from odf.style import Style, TextProperties
 
 from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 from reportlab.lib.pagesizes import letter
@@ -231,6 +234,8 @@ class Exam(Base):
                 question_data['answers'] = Question.get_answers_for_question(session, question.id)
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
+
+        exam_data['questions']['items'].sort(key=lambda x: x['section_number'])
 
         return exam_data
 
@@ -635,6 +640,66 @@ class Exam(Base):
 
         tree = ElementTree(quiz)
         tree.write(output_file, encoding='utf-8', xml_declaration=True)
+
+    @staticmethod
+    def export_exam_to_odt(session, exam_id: int, output_file: str):
+        user_id = get_current_user_id()
+        exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
+
+        if not exam:
+            raise ValueError("El examen no existe.")
+
+        exam_data = Exam.get_exam(session, exam_id)
+        questions = exam_data['questions']['items']
+
+        # Crear un nuevo documento ODT
+        doc = OpenDocumentText()
+
+        # Crear estilos
+        h1_style = Style(name="Heading1", family="paragraph")
+        h1_style.addElement(TextProperties(attributes={'fontsize': "24pt", 'fontweight': "bold"}))
+        doc.styles.addElement(h1_style)
+
+        h2_style = Style(name="Heading2", family="paragraph")
+        h2_style.addElement(TextProperties(attributes={'fontsize': "18pt", 'fontweight': "bold"}))
+        doc.styles.addElement(h2_style)
+
+        p_style = Style(name="Paragraph", family="paragraph")
+        p_style.addElement(TextProperties(attributes={'fontsize': "12pt"}))
+        doc.styles.addElement(p_style)
+
+        # Añadir el título del examen
+        h = H(outlinelevel=1, stylename=h1_style, text=exam_data['title'])
+        doc.text.addElement(h)
+
+        question_number = 0
+        current_section = None
+
+        for question in questions:
+            question_number += 1
+
+            section = question.get('section_number')
+            if section != current_section:
+                current_section = section
+                section_title = f"Sección {current_section}"
+                h2 = H(outlinelevel=2, stylename=h2_style, text=section_title)
+                doc.text.addElement(h2)
+                doc.text.addElement(P(text=""))
+
+            question_text = f"{question_number}. {question['title']}"
+            p = P(stylename=p_style, text=question_text)
+            doc.text.addElement(p)
+
+            if 'answers' in question and question['type'] == 'test':
+                answers = question['answers']['items']
+                for answer in answers:
+                    answer_text = f"- {answer['body']}"
+                    p = P(stylename=p_style, text=answer_text)
+                    doc.text.addElement(p)
+            doc.text.addElement(P(text=""))
+
+        # Guardar el documento
+        doc.save(output_file)
 
     @staticmethod
     def get_recent_exam_questions(session, subject_id: int, years: int):

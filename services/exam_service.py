@@ -156,6 +156,19 @@ def export_exam_to_moodlexml(id):
         return jsonify({"message": str(e)}), 400
 
 
+@blp.route('/<int:id>/export_odt', methods=["GET"])
+@jwt_required()
+def export_exam_to_odt(id):
+    try:
+        # Generar el archivo ODT
+        output_file = f"exam_{id}.odt"
+        Exam.export_exam_to_odt(SESSION, id, output_file)
+
+        return send_file(output_file, as_attachment=True)
+    except Exception as e:
+        abort(400, message=str(e))
+
+
 
 @blp.route('<int:exam_id>', methods=["PUT"])
 @jwt_required()
