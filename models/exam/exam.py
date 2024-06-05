@@ -2,9 +2,11 @@ import random
 from datetime import datetime, timedelta
 from odf.opendocument import OpenDocumentText
 from odf.text import H, P, Span
-from odf.style import Style, TextProperties
+from odf.style import Style, TextProperties, ParagraphProperties
 
 from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
+
+from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -203,6 +205,7 @@ class Exam(Base):
             # Manejar el caso donde el examen no existe
             return None
 
+
         exam = res[0]
         exam_data = {
             "id": exam.id,
@@ -211,6 +214,8 @@ class Exam(Base):
             "subject_id": exam.subject_id,
             "difficulty": exam.difficulty,
             "time": exam.time,
+            "year": exam.created_on.year,
+            "month": exam.created_on.month,
             "questions": {
                 "items": [],
                 "total": 0
@@ -483,18 +488,37 @@ class Exam(Base):
         doc = SimpleDocTemplate(output_file, pagesize=letter)
         styles = getSampleStyleSheet()
 
-        # Encabezado
-        exam_title = exam_data['title']
-        header = Paragraph(exam_title, styles['Title'])
-        subheader = Paragraph(subject_data.name, ParagraphStyle(
-            name='Subheader',
-            parent=styles['Heading2'],
-            alignment=1
-            )
+        # Estilos personalizados
+        right_aligned_style = ParagraphStyle(
+            name='RightAligned',
+            parent=styles['Normal'],
+            alignment=TA_RIGHT
         )
 
+        bold_style = ParagraphStyle(
+            name='Bold',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold'
+        )
+
+        # Encabezado
+        exam_title = exam_data['title']
+        if exam_data['month'] >= 9:
+            year1 = exam_data['year']
+            year2 = exam_data['year'] + 1
+        else:
+            year1 = exam_data['year'] - 1
+            year2 = exam_data['year']
+
+        subject_name = subject_data.name
+        header_text = f"{subject_name}   -   Curso {year1}-{year2}<br/>{exam_title}"
+        header = Paragraph(header_text, right_aligned_style)
+
+        # Línea para Nombre y Apellidos
+        name_line = Paragraph("Nombre y Apellidos: _______________________________________________________________", bold_style)
+
         # Contenido
-        content = [header, Spacer(1, 0), subheader, Spacer(1, 30)]
+        content = [header, Spacer(1, 50), name_line, Spacer(1, 12)]
         questions = exam_data['questions']['items']
         question_number = 0
         current_section = None
@@ -650,6 +674,8 @@ class Exam(Base):
             raise ValueError("El examen no existe.")
 
         exam_data = Exam.get_exam(session, exam_id)
+        subject_data = session.query(Subject).filter(Subject.id == exam_data['subject_id']).one()
+
         questions = exam_data['questions']['items']
 
         # Crear un nuevo documento ODT
@@ -668,10 +694,45 @@ class Exam(Base):
         p_style.addElement(TextProperties(attributes={'fontsize': "12pt"}))
         doc.styles.addElement(p_style)
 
-        # Añadir el título del examen
-        h = H(outlinelevel=1, stylename=h1_style, text=exam_data['title'])
-        doc.text.addElement(h)
+        bold_style = Style(name="Bold", family="text")
+        bold_style.addElement(TextProperties(fontweight="bold"))
+        doc.styles.addElement(bold_style)
 
+        small_right_align_style = Style(name="SmallRightAlign", family="paragraph")
+        small_right_align_style.addElement(TextProperties(attributes={'fontsize': "10pt"}))
+        small_right_align_style.addElement(ParagraphProperties(attributes={'textalign': "right"}))
+        doc.styles.addElement(small_right_align_style)
+
+        exam_title = exam_data['title']
+        if exam_data['month'] >= 9:
+            year1 = exam_data['year']
+            year2 = exam_data['year'] + 1
+        else:
+            year1 = exam_data['year'] - 1
+            year2 = exam_data['year']
+        subject_name = subject_data.name
+        header_text = f"{subject_name} - Curso {year1}-{year2}"
+        name_line = "Nombre y Apellidos: _________________________________________________________________"
+        exam_line = f"{exam_title}"
+
+        header_p = P(stylename=small_right_align_style)
+        header_p.addElement(Span(text=header_text, stylename=bold_style))
+        doc.text.addElement(header_p)
+
+        exam_p = P(stylename=small_right_align_style)
+        exam_p.addElement(Span(text=exam_line, stylename=bold_style))
+        doc.text.addElement(exam_p)
+
+        doc.text.addElement(P(text=""))
+        doc.text.addElement(P(text=""))
+
+        name_p = P(stylename=small_right_align_style)
+        name_p.addElement(Span(text=name_line, stylename=bold_style))
+        doc.text.addElement(name_p)
+
+        doc.text.addElement(P(text=""))
+
+        # Contenido del examen
         question_number = 0
         current_section = None
 
@@ -686,16 +747,35 @@ class Exam(Base):
                 doc.text.addElement(h2)
                 doc.text.addElement(P(text=""))
 
-            question_text = f"{question_number}. {question['title']}"
+            raw_parameters = [{
+                'value': param['value'], 'group': param['group']
+            } for param in question.get('question_parameters', {}).get('items', [])]
+            parameters = []
+            if raw_parameters != parameters:
+                random_group = random.choice(raw_parameters)
+                for param in raw_parameters:
+                    if param['group'] == random_group['group']:
+                        parameters.append(param['value'])
+                question_title = replace_parameters(question['title'], parameters)
+            else:
+                question_title = question['title']
+
+            question_text = f"{question_number}. {question_title}"
             p = P(stylename=p_style, text=question_text)
             doc.text.addElement(p)
 
             if 'answers' in question and question['type'] == 'test':
                 answers = question['answers']['items']
+                answer_letter = 'A'
                 for answer in answers:
-                    answer_text = f"- {answer['body']}"
+                    if raw_parameters != parameters:
+                        answer_body = replace_parameters(answer['body'], parameters)
+                    else:
+                        answer_body = answer['body']
+                    answer_text = f"{answer_letter}. {answer_body}"
                     p = P(stylename=p_style, text=answer_text)
                     doc.text.addElement(p)
+                    answer_letter = chr(ord(answer_letter) + 1)
             doc.text.addElement(P(text=""))
 
         # Guardar el documento

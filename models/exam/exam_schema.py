@@ -17,6 +17,8 @@ class FullExamSchema(Schema):
     connected = fields.Boolean()
     time = fields.Integer()
     difficulty = fields.Integer()
+    year = fields.Integer()
+    month = fields.Integer()
     questions = fields.Nested(FullQuestionListSchema)
     class Meta:
         unknown = EXCLUDE
