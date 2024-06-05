@@ -186,3 +186,29 @@ def upload_questions(import_data):
         abort(400, message="File not found")
     except Exception as e:
         abort(400, message=str(e))
+
+
+@blp.route('/upload_aiken', methods=["POST"])
+@jwt_required()
+@blp.arguments(ImportQuestionSchema, location='query')
+@blp.response(200, QuestionListSchema)
+def upload_questions_aiken(import_data):
+    """ Uploads a text file with Aiken format questions and adds results """
+    if 'file' not in request.files:
+        abort(400, message="Text file not provided")
+
+    file = request.files['file']
+
+    try:
+        questions = Question.insert_questions_from_aiken(
+            session=SESSION,
+            file=file,
+            subject_id=import_data.get('subject_id'),
+            difficulty=import_data.get('difficulty', 1),
+            time=import_data.get('time', 1),
+        )
+        return {"items": questions}, 200
+    except FileNotFoundError:
+        abort(400, message="File not found")
+    except Exception as e:
+        abort(400, message=str(e))

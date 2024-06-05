@@ -1,5 +1,6 @@
 from enum import Enum
 import pandas as pd
+import re
 
 from flask import abort
 from sqlalchemy import Integer, String, select, ForeignKey, delete, and_, CheckConstraint, Boolean, func
@@ -530,6 +531,69 @@ class Question(Base):
             schema = FullQuestionListSchema()
             return schema.dump({"items": questions})
 
+        except Exception as e:
+            session.rollback()
+            abort(400, message=str(e))
+
+    @staticmethod
+    def insert_questions_from_aiken(session, file, subject_id: int, difficulty: int = 1,
+                                    time: int = 1) -> FullQuestionListSchema:
+        from models.answer.answer import Answer
+        user_id = get_current_user_id()
+        query = select(Subject).where(
+            and_(
+                Subject.id == subject_id,
+                Subject.created_by == user_id
+            )
+        )
+        subject = session.execute(query).first()
+
+        if not subject:
+            abort(400, "La asignatura con el ID no ha sido encontrada.")
+
+        questions = []
+        question_pattern = re.compile(r"^(.*?)\n([A-Z]\..*?)\nANSWER:\s([A-Z])", re.MULTILINE | re.DOTALL)
+
+        try:
+            content = file.read().decode('utf-8')
+            matches = question_pattern.findall(content)
+
+            for match in matches:
+                title = match[0].strip()
+                answers = match[1].strip().split('\n')
+                correct_answer = match[2].strip()
+
+                new_question = Question(
+                    title=title,
+                    subject_id=subject_id,
+                    created_by=user_id,
+                    time=time,
+                    difficulty=difficulty,
+                    type='test',
+                    active=True
+                )
+
+                session.add(new_question)
+                session.commit()
+
+                for answer in answers:
+                    answer_letter = answer[0]
+                    answer_text = answer[3:].strip()
+                    points = 100 if answer_letter == correct_answer else 0
+
+                    Answer.insert_answer(
+                        session=session,
+                        body=answer_text,
+                        question_id=new_question.id,
+                        points=points
+                    )
+
+                session.commit()
+
+                questions.append(new_question)
+
+            schema = FullQuestionListSchema()
+            return schema.dump({"items": questions})
         except Exception as e:
             session.rollback()
             abort(400, message=str(e))
