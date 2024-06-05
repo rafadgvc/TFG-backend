@@ -51,3 +51,7 @@ class ExamListSchema(Schema):
     def add_total_exams(self, data, many, **kwargs):
         data['total'] = len(data['items'])
         return data
+
+class CompareExamsSchema(Schema):
+    subject_id = fields.Integer()
+    years = fields.Integer()

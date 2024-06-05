@@ -1,11 +1,12 @@
 import random
+from datetime import datetime, timedelta
 
 from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from flask import abort
-from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_
+from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_, DateTime
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Set, List
@@ -26,8 +27,7 @@ class Exam(Base):
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     title: Mapped[str] = mapped_column(String, nullable=False)
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subject.id"))
-
-
+    created_on: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="exams")
@@ -146,7 +146,8 @@ class Exam(Base):
         new_exam = Exam(
             title=title,
             subject_id=subject_id,
-            created_by=user_id
+            created_by=user_id,
+            created_on=datetime.now()
         )
 
 
@@ -455,7 +456,7 @@ class Exam(Base):
                             else:
                                 answer_body = answer['body']
                             file.write(f"{answer_letter}. {answer_body}\n")
-                            if answer['points'] == 1:
+                            if answer['points'] == 100:
                                 correct_answer_letter = answer_letter
                             answer_letter = chr(ord(answer_letter) + 1)
 
@@ -575,7 +576,7 @@ class Exam(Base):
                             answer_body = replace_parameters(answer['body'], parameters)
                         else:
                             answer_body = answer['body']
-                        file.write(f"~%{answer['points']*100}%{answer_body}\n")
+                        file.write(f"~%{answer['points']}%{answer_body}\n")
 
                 file.write("}\n\n")
 
@@ -624,7 +625,7 @@ class Exam(Base):
                         answer_body = replace_parameters(answer['body'], parameters)
                     else:
                         answer_body = answer['body']
-                    answer_element = SubElement(question_element, 'answer', fraction=str(int(answer['points'] * 100)))
+                    answer_element = SubElement(question_element, 'answer', fraction=str(int(answer['points'] )))
                     text = SubElement(answer_element, 'text')
                     text.text = answer_body
             else:
@@ -634,3 +635,39 @@ class Exam(Base):
 
         tree = ElementTree(quiz)
         tree.write(output_file, encoding='utf-8', xml_declaration=True)
+
+    @staticmethod
+    def get_recent_exam_questions(session, subject_id: int, years: int):
+        """
+        Devuelve las preguntas de los exámenes creados en los últimos n años de una asignatura.
+        """
+        from models.question.question import Question
+        from models.associations.associations import exam_question_association
+
+        # Calcula la fecha límite para los últimos n años
+        cutoff_date = datetime.now() - timedelta(days=365 * years)
+
+        # Query para obtener los exámenes recientes de una asignatura específica
+        exams_query = (
+            select(Exam)
+            .where(
+                and_(
+                    Exam.subject_id == subject_id,
+                    Exam.created_on >= cutoff_date
+                )
+            )
+        )
+
+        exams = session.execute(exams_query).scalars().all()
+
+        question_ids = set()
+        for exam in exams:
+            for question in exam.questions:
+                question_ids.add(question.id)
+
+        # Query para obtener las preguntas correspondientes
+        questions_query = select(Question).where(Question.id.in_(question_ids))
+        questions = session.execute(questions_query).scalars().all()
+
+        schema = QuestionListSchema()
+        return schema.dump({"items": questions, "total": len(questions)})

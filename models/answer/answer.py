@@ -16,7 +16,7 @@ class Answer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
     body: Mapped[str] = mapped_column(String, nullable=False)
-    points: Mapped[int] = mapped_column(Integer, CheckConstraint('points >= -1 AND points <= 1'), nullable=False)
+    points: Mapped[int] = mapped_column(Integer, CheckConstraint('points >= -100 AND points <= 100'), nullable=False)
     question_id: Mapped[int] = mapped_column(Integer, ForeignKey("question.id"))
 
     # Relaciones

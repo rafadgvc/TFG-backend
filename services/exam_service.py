@@ -2,7 +2,7 @@ from flask import send_file, jsonify
 from flask_jwt_extended import jwt_required
 
 from models.exam.exam import Exam
-from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema, SectionSchema
+from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema, SectionSchema, CompareExamsSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
 from models.question.question_schema import QuestionListSchema
@@ -174,5 +174,20 @@ def edit_exam(exam_data, exam_id):
             questions=exam.get('questions').get('items'),
         )
         return updated_exam
+    except Exception as e:
+        abort(400, message=str(e))
+
+@blp.route('/recent-questions', methods=["GET"])
+@jwt_required()
+@blp.arguments(CompareExamsSchema, location='query')
+@blp.response(200, QuestionListSchema)
+def get_recent_exam_questions(params):
+    """ Returns questions from exams created in the last n years for a specific subject """
+    try:
+        return Exam.get_recent_exam_questions(
+            SESSION,
+            subject_id=params.get('subject_id'),
+            years=params.get('years')
+        )
     except Exception as e:
         abort(400, message=str(e))
