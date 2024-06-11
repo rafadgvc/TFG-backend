@@ -18,7 +18,7 @@ class Result(Base):
     exam_id: Mapped[int] = mapped_column(Integer, ForeignKey("exam.id"))
     time: Mapped[int] = mapped_column(String, nullable=False)
     taker: Mapped[int] = mapped_column(String, nullable=False)
-    points: Mapped[int] = mapped_column(Integer, CheckConstraint('points >= -1 AND points <= 1'), nullable=False)
+    points: Mapped[int] = mapped_column(Integer, CheckConstraint('points >= -100 AND points <= 100'), nullable=False)
 
     # Relaciones
     created: Mapped["User"] = relationship(back_populates="results")

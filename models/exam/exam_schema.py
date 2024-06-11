@@ -56,4 +56,4 @@ class ExamListSchema(Schema):
 
 class CompareExamsSchema(Schema):
     subject_id = fields.Integer()
-    years = fields.Integer()
+    exam_ids = fields.List(fields.Integer())

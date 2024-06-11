@@ -190,17 +190,17 @@ def edit_exam(exam_data, exam_id):
     except Exception as e:
         abort(400, message=str(e))
 
-@blp.route('/recent-questions', methods=["GET"])
+@blp.route('/exam-questions', methods=["GET"])
 @jwt_required()
 @blp.arguments(CompareExamsSchema, location='query')
 @blp.response(200, QuestionListSchema)
-def get_recent_exam_questions(params):
+def get_exam_questions(params):
     """ Returns questions from exams created in the last n years for a specific subject """
     try:
-        return Exam.get_recent_exam_questions(
+        return Exam.get_exam_questions(
             SESSION,
             subject_id=params.get('subject_id'),
-            years=params.get('years')
+            exam_ids=params.get('exam_ids')
         )
     except Exception as e:
         abort(400, message=str(e))

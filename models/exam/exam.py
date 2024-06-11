@@ -782,15 +782,13 @@ class Exam(Base):
         doc.save(output_file)
 
     @staticmethod
-    def get_recent_exam_questions(session, subject_id: int, years: int):
+    def get_exam_questions(session, subject_id: int,  exam_ids: list[int]):
         """
-        Devuelve las preguntas de los exámenes creados en los últimos n años de una asignatura.
+        Devuelve las preguntas de los exámenes seleccionados.
         """
         from models.question.question import Question
         from models.associations.associations import exam_question_association
 
-        # Calcula la fecha límite para los últimos n años
-        cutoff_date = datetime.now() - timedelta(days=365 * years)
 
         # Query para obtener los exámenes recientes de una asignatura específica
         exams_query = (
@@ -798,7 +796,7 @@ class Exam(Base):
             .where(
                 and_(
                     Exam.subject_id == subject_id,
-                    Exam.created_on >= cutoff_date
+                    Exam.id.in_(exam_ids)
                 )
             )
         )
