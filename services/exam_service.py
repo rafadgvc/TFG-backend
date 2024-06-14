@@ -195,7 +195,7 @@ def edit_exam(exam_data, exam_id):
 @blp.arguments(CompareExamsSchema, location='query')
 @blp.response(200, QuestionListSchema)
 def get_exam_questions(params):
-    """ Returns questions from exams created in the last n years for a specific subject """
+    """ Returns questions from selected exams for a specific subject """
     try:
         return Exam.get_exam_questions(
             SESSION,

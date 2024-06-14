@@ -124,6 +124,22 @@ class Node(Base):
         return node_data
 
     @staticmethod
+    def get_root_node(session, subject_id: int) -> NodeSchema:
+        query = select(Node).where(
+            and_(
+                Node.subject_id == subject_id,
+                Node.parent_id == null()
+            )
+        )
+
+        root_node = session.execute(query).scalars().first()
+
+        if not root_node:
+            abort(404, "No se encontró un nodo raíz para la asignatura con el ID proporcionado.")
+
+        return root_node
+
+    @staticmethod
     def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> NodeListSchema:
         current_user_id = get_current_user_id()
         query = select(Node).where(

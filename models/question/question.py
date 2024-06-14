@@ -114,6 +114,7 @@ class Question(Base):
             time: int,
             type: str,
             active: bool,
+            parametrized: bool = False
     ) -> FullQuestionSchema:
         user_id = get_current_user_id()
         query = select(Subject).where(
@@ -135,7 +136,8 @@ class Question(Base):
             time=time,
             difficulty=difficulty,
             type=type.lower(),
-            active=active
+            active=active,
+            parametrized=parametrized,
         )
 
         # Asignar nodos a la pregunta
@@ -392,6 +394,7 @@ class Question(Base):
         question.time = time
         question.type = type.lower()
         question.active = active
+        question.parametrized = question_parameters_data is not []
 
         query = delete(node_question_association).where(node_question_association.c.question_id == question_id)
         session.execute(query)
@@ -494,7 +497,6 @@ class Question(Base):
                 session.add(new_question)
                 session.commit()
 
-                # Insertar respuestas asociadas a la pregunta
                 answer_index = 1
                 while f'answer{answer_index}' in row:
                     answer_text = row.get(f'answer{answer_index}')
@@ -572,6 +574,9 @@ class Question(Base):
                     type='test',
                     active=True
                 )
+
+                node = Node.get_root_node(session=session, subject_id=subject_id)
+                new_question.nodes.append(node)
 
                 session.add(new_question)
                 session.commit()

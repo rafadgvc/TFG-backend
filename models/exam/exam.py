@@ -782,13 +782,12 @@ class Exam(Base):
         doc.save(output_file)
 
     @staticmethod
-    def get_exam_questions(session, subject_id: int,  exam_ids: list[int]):
+    def get_exam_questions(session, subject_id: int, exam_ids: list[int]):
         """
         Devuelve las preguntas de los exámenes seleccionados.
         """
         from models.question.question import Question
         from models.associations.associations import exam_question_association
-
 
         # Query para obtener los exámenes recientes de una asignatura específica
         exams_query = (
@@ -803,14 +802,12 @@ class Exam(Base):
 
         exams = session.execute(exams_query).scalars().all()
 
-        question_ids = set()
+        questions = []
         for exam in exams:
             for question in exam.questions:
-                question_ids.add(question.id)
-
-        # Query para obtener las preguntas correspondientes
-        questions_query = select(Question).where(Question.id.in_(question_ids))
-        questions = session.execute(questions_query).scalars().all()
+                question_dict = question.__dict__.copy()
+                question_dict['exam_id'] = exam.id
+                questions.append(question_dict)
 
         schema = QuestionListSchema()
         return schema.dump({"items": questions, "total": len(questions)})

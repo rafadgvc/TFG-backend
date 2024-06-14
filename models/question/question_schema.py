@@ -14,6 +14,7 @@ class QuestionSchema(Schema):
     time = fields.Integer()
     difficulty = fields.Integer()
     type = fields.String()
+    exam_id = fields.Integer(nullable=True)
     class Meta:
         unknown = EXCLUDE
 

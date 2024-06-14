@@ -38,6 +38,7 @@ def add_question(question_data):
             difficulty=question.get('difficulty'),
             type=question.get('type'),
             active=question.get('active'),
+            parametrized=question_parameters_data is not []
         )
 
         new_question['answers'] = {'items': [], 'total': 0}
