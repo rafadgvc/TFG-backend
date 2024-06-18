@@ -13,12 +13,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from flask import abort
 from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_, DateTime
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column, joinedload, subqueryload
 from typing import Set, List
 
 from db.versions.db import Base
 from models.exam.exam_schema import FullExamSchema, ExamListSchema
-from models.question.question_schema import QuestionListSchema
+from models.question.question_schema import QuestionListSchema, QuestionSchema
+from models.question_parameter.question_parameter_schema import QuestionParameterListSchema
 from models.subject.subject import Subject
 from models.user.user import User
 from utils.utils import get_current_user_id, replace_parameters
@@ -176,11 +177,13 @@ class Exam(Base):
             if not res:
                 abort(400, f"La pregunta con el ID {question['id']} no fue encontrada.")
 
-            # Añadir a la asociación con la sección correspondiente
+            group = question['group'] if question.get('group') is not None else None
+
             association = exam_question_association.insert().values(
                 exam_id=new_exam.id,
                 question_id=question['id'],
-                section_id=question['section_number']
+                section_id=question['section_number'],
+                group=group
             )
             session.execute(association)
             session.commit()
@@ -235,6 +238,16 @@ class Exam(Base):
                 section_result = session.execute(section_query).first()
                 if section_result:
                     question_data['section_number'] = section_result[0]
+
+                group_query = select(exam_question_association.c.group).where(
+                    and_(
+                        exam_question_association.c.exam_id == exam.id,
+                        exam_question_association.c.question_id == question.id
+                    )
+                )
+                group_result = session.execute(group_query).first()
+                if group_result:
+                    question_data['group'] = group_result[0]
 
                 question_data['answers'] = Question.get_answers_for_question(session, question.id)
                 exam_data['questions']['items'].append(question_data)
@@ -328,11 +341,14 @@ class Exam(Base):
             if not res:
                 abort(400, f"La pregunta con el ID {question['id']} no fue encontrada.")
 
+            group = question['group'] if question.get('group') is not None else None
+
             # Añadir a la asociación con la sección correspondiente
             association = exam_question_association.insert().values(
                 exam_id=exam.id,
                 question_id=question['id'],
-                section_id=question['section_number']
+                section_id=question['section_number'],
+                group=group
             )
             session.execute(association)
         session.commit()
@@ -344,7 +360,6 @@ class Exam(Base):
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
         return exam_data
-
 
     @staticmethod
     def get_questions_to_select(
@@ -361,6 +376,7 @@ class Exam(Base):
     ) -> QuestionListSchema:
         from models.question.question import Question
         from models.associations.associations import node_question_association
+        from models.question_parameter.question_parameter import QuestionParameter
         current_user_id = get_current_user_id()
 
         query = select(Question).join(node_question_association).where(
@@ -399,8 +415,32 @@ class Exam(Base):
             questions = questions[:question_number]
 
         total = session.query(Question).count()
-        schema = QuestionListSchema()
-        return schema.dump({"items": questions, "total": total})
+
+        schema = QuestionSchema()
+        data = []
+        for question in questions:
+            question_dict = schema.dump(
+            {
+                "id": question.id,
+                "title": question.title,
+                "subject_id": question.subject_id,
+                "time": question.time,
+                "difficulty": question.difficulty,
+                "type": question.type,
+                "active": question.active,
+                "connected": question.connected,
+                "parametrized": question.parametrized
+            }
+        )
+            if question.parametrized:
+                # Obtener los parámetros de la pregunta
+                parameters = session.query(QuestionParameter).filter_by(question_id=question.id).all()
+                parameter_schema = QuestionParameterListSchema()
+                parameters_data = parameter_schema.dump({"items": parameters})
+                question_dict['question_parameters'] = parameters_data
+            data.append(question_dict)
+
+        return {"items": data, "total": total}
 
     @staticmethod
     def delete_exam(session, exam_id: int):
@@ -446,9 +486,13 @@ class Exam(Base):
                     } for param in question.get('question_parameters', {}).get('items', [])]
                     parameters = []
                     if raw_parameters != parameters:
-                        random_group = random.choice(raw_parameters)
+                        if question['group'] is not None:
+                            random_group = question['group']
+                        else:
+                            random_param = random.choice(raw_parameters)
+                            random_group = random_param['group']
                         for param in raw_parameters:
-                            if param['group'] == random_group['group']:
+                            if param['group'] == random_group:
                                 parameters.append(param['value'])
                         question_title = replace_parameters(question['title'], parameters)
                     else:
@@ -537,9 +581,13 @@ class Exam(Base):
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
             if raw_parameters != parameters:
-                random_group = random.choice(raw_parameters)
+                if question['group'] is not None:
+                    random_group = question['group']
+                else:
+                    random_param = random.choice(raw_parameters)
+                    random_group = random_param['group']
                 for param in raw_parameters:
-                    if param['group'] == random_group['group']:
+                    if param['group'] == random_group:
                         parameters.append(param['value'])
                 question_title = replace_parameters(question['title'], parameters)
             else:
@@ -587,9 +635,13 @@ class Exam(Base):
                 } for param in question.get('question_parameters', {}).get('items', [])]
                 parameters = []
                 if raw_parameters != parameters:
-                    random_group = random.choice(raw_parameters)
+                    if question['group'] is not None:
+                        random_group = question['group']
+                    else:
+                        random_param = random.choice(raw_parameters)
+                        random_group = random_param['group']
                     for param in raw_parameters:
-                        if param['group'] == random_group['group']:
+                        if param['group'] == random_group:
                             parameters.append(param['value'])
                     question_title = replace_parameters(question['title'], parameters)
                 else:
@@ -629,9 +681,13 @@ class Exam(Base):
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
             if raw_parameters != parameters:
-                random_group = random.choice(raw_parameters)
+                if question['group'] is not None:
+                    random_group = question['group']
+                else:
+                    random_param = random.choice(raw_parameters)
+                    random_group = random_param['group']
                 for param in raw_parameters:
-                    if param['group'] == random_group['group']:
+                    if param['group'] == random_group:
                         parameters.append(param['value'])
                 question_title = replace_parameters(question['title'], parameters)
             else:
@@ -752,9 +808,13 @@ class Exam(Base):
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
             if raw_parameters != parameters:
-                random_group = random.choice(raw_parameters)
+                if question['group'] is not None:
+                    random_group = question['group']
+                else:
+                    random_param = random.choice(raw_parameters)
+                    random_group = random_param['group']
                 for param in raw_parameters:
-                    if param['group'] == random_group['group']:
+                    if param['group'] == random_group:
                         parameters.append(param['value'])
                 question_title = replace_parameters(question['title'], parameters)
             else:
