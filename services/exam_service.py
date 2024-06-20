@@ -107,60 +107,53 @@ def delete_exam(id):
 @jwt_required()
 def export_exam_to_aiken(id):
     try:
-        # Generar el archivo Aiken
         output_file = f"exam_{id}_aiken.txt"
         Exam.export_exam_to_aiken(SESSION, id, output_file)
 
         return send_file(output_file, as_attachment=True)
-    except ValueError as e:
-        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        abort(400, message=str(e))
 
 @blp.route('/<int:id>/export_pdf', methods=["GET"])
 @jwt_required()
 def export_exam_to_pdf(id):
     try:
-        # Generar el archivo PDF
         exam_data = Exam.get_exam(SESSION, id)
         if not exam_data:
-            return jsonify({"message": "El examen no existe"}), 404
+            abort(404, message='El examen no existe')
         output_file = f"{exam_data['title']}.pdf"
         Exam.export_exam_to_pdf(SESSION, id, output_file)
-
-        # Devolver el archivo PDF
         return send_file(output_file, as_attachment=True)
-    except ValueError as e:
-        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        abort(400, message=str(e))
 
 @blp.route('/<int:id>/export_gift', methods=["GET"])
 @jwt_required()
 def export_exam_to_gift(id):
     try:
-        # Generar el archivo GIFT
         output_file = f"exam_{id}_gift.txt"
         Exam.export_exam_to_gift(SESSION, id, output_file)
 
         return send_file(output_file, as_attachment=True)
-    except ValueError as e:
-        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        abort(400, message=str(e))
 
 @blp.route('/<int:id>/export_moodlexml', methods=["GET"])
 @jwt_required()
 def export_exam_to_moodlexml(id):
     try:
-        # Generar el archivo MoodleXML
         output_file = f"exam_{id}_moodlexml.xml"
         Exam.export_exam_to_moodlexml(SESSION, id, output_file)
 
         return send_file(output_file, as_attachment=True)
-    except ValueError as e:
-        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        abort(400, message=str(e))
 
 
 @blp.route('/<int:id>/export_odt', methods=["GET"])
 @jwt_required()
 def export_exam_to_odt(id):
     try:
-        # Generar el archivo ODT
         output_file = f"exam_{id}.odt"
         Exam.export_exam_to_odt(SESSION, id, output_file)
 

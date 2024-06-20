@@ -48,7 +48,7 @@ def add_subject(subject_data):
         subject = SubjectSchema().load(subject_data)
         return Subject.insert_subject(
             session=SESSION,
-            name=subject_data['name']
+            name=subject_data.get('name')
 
         )
     except Exception as e:

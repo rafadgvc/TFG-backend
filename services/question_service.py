@@ -38,34 +38,10 @@ def add_question(question_data):
             difficulty=question.get('difficulty'),
             type=question.get('type'),
             active=question.get('active'),
-            parametrized=question_parameters_data is not []
+            parametrized=question_parameters_data is not [],
+            answers=answers_data.get('items', []),
+            question_parameters=question_parameters_data
         )
-
-        new_question['answers'] = {'items': [], 'total': 0}
-
-        for answer_data in answers_data.get('items'):
-            new_answer = Answer.insert_answer(
-                session=SESSION,
-                question_id=new_question['id'],
-                body=answer_data.get('body'),
-                points=answer_data.get('points'),
-            )
-            new_question['answers']['items'].append(new_answer)
-            new_question['answers']['total'] += 1
-
-        if question_parameters_data is not []:
-            new_question['question_parameters'] = {'items': [], 'total': 0}
-
-            for question_parameter_data in question_parameters_data.get('items'):
-                new_question_parameter = QuestionParameter.insert_question_parameter(
-                    session=SESSION,
-                    question_id=new_question['id'],
-                    value=question_parameter_data.get('value'),
-                    group=question_parameter_data.get('group'),
-                    position=question_parameter_data.get('position')
-                )
-                new_question['question_parameters']['items'].append(new_question_parameter)
-                new_question['question_parameters']['total'] += 1
 
         return new_question
     except Exception as e:

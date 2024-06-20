@@ -114,8 +114,13 @@ class Question(Base):
             time: int,
             type: str,
             active: bool,
-            parametrized: bool = False
+            answers: List[dict],
+            question_parameters: List[dict],
+            parametrized: bool = False,
+
     ) -> FullQuestionSchema:
+        from models.answer.answer import Answer
+        from models.question_parameter.question_parameter import QuestionParameter
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -154,6 +159,28 @@ class Question(Base):
 
         session.add(new_question)
         session.commit()
+
+
+
+        for answer_data in answers:
+            new_answer = Answer.insert_answer(
+                session=session,
+                question_id=new_question.id,
+                body=answer_data.get('body'),
+                points=answer_data.get('points'),
+            )
+
+        if question_parameters is not []:
+
+            for question_parameter in question_parameters.get('items'):
+                new_question_parameter = QuestionParameter.insert_question_parameter(
+                    session=session,
+                    question_id=new_question.id,
+                    value=question_parameter.get('value'),
+                    group=question_parameter.get('group'),
+                    position=question_parameter.get('position')
+                )
+
         schema = FullQuestionSchema()
 
         return schema.dump(
