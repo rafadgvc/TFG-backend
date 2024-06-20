@@ -18,7 +18,7 @@ from typing import Set, List
 
 from db.versions.db import Base
 from models.exam.exam_schema import FullExamSchema, ExamListSchema
-from models.question.question_schema import QuestionListSchema, QuestionSchema
+from models.question.question_schema import QuestionListSchema, QuestionSchema, QuestionExtendedListSchema
 from models.question_parameter.question_parameter_schema import QuestionParameterListSchema
 from models.subject.subject import Subject
 from models.user.user import User
@@ -373,7 +373,7 @@ class Exam(Base):
             exclude_ids: list[int] = None,
             limit: int = None,
             offset: int = 0
-    ) -> QuestionListSchema:
+    ) -> QuestionExtendedListSchema:
         from models.question.question import Question
         from models.associations.associations import node_question_association
         from models.question_parameter.question_parameter import QuestionParameter

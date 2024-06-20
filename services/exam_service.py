@@ -5,7 +5,7 @@ from models.exam.exam import Exam
 from models.exam.exam_schema import ExamSchema, FullExamSchema, ExamListSchema, SectionSchema, CompareExamsSchema
 from flask_smorest import Blueprint, abort
 from db.versions.db import create_db
-from models.question.question_schema import QuestionListSchema
+from models.question.question_schema import QuestionListSchema, QuestionExtendedListSchema
 from utils.common_schema import PaginationSchema
 
 blp = Blueprint("Exam", __name__, url_prefix="/exam")
@@ -70,7 +70,7 @@ def get_subject_exams(pagination_params, subject_id):
 @blp.route('/select-questions', methods=["GET"])
 @jwt_required()
 @blp.arguments(SectionSchema, location='query')
-@blp.response(200, QuestionListSchema)
+@blp.response(200, QuestionExtendedListSchema)
 def select_nodes_questions(section_data):
     """ Returns questions depending on a few parameters
     """
