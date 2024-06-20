@@ -1,0 +1,13 @@
+SQLAlchemy~=2.0.29
+typing~=3.7.4.3
+pip~=23.2.1
+attrs~=23.2.0
+argparse~=1.4.0
+wheel~=0.41.2
+pillow~=10.3.0
+Jinja2~=3.1.3
+marshmallow~=3.21.1
+Flask~=3.0.3
+reportlab~=4.2.0
+bcrypt~=4.1.2
+pandas~=2.2.2
