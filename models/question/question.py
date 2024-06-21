@@ -66,34 +66,23 @@ class Question(Base):
     @hybrid_property
     def connected(self):
         """
-        Calcula si la pregunta tiene recursos asociados (exámenes).
+        Calculates if the question has associated resources (exams).
         """
         return len(self.exams) > 0
 
     @connected.expression
     def connected(cls):
         """
-        Expresión SQLAlchemy para calcular si la pregunta tiene recursos asociados (exámenes).
+        Expresión SQLAlchemy to calculate if the question has associated resources (exams).
         """
         return select([func.count(exam_question_association.c.exam_id)]).where(
             exam_question_association.c.question_id == cls.id).label("connected") > 0
-
-    @hybrid_property
-    def uses(self):
-        return len(self.exams)
-
-    @uses.expression
-    def uses(cls):
-        return (
-            select([func.count(exam_question_association.c.exam_id)])
-            .where(exam_question_association.c.question_id == cls.id)
-            .label("uses")
-        )
 
 
     @staticmethod
     def get_answers_for_question(session, question_id: int, limit: int = None, offset: int = 0) -> AnswerListSchema:
         from models.answer.answer import Answer
+        # The question's answers are obtained
         query = select(Answer).where(Answer.question_id == question_id).offset(offset)
         if limit:
             query = query.limit(limit)
@@ -121,6 +110,7 @@ class Question(Base):
     ) -> FullQuestionSchema:
         from models.answer.answer import Answer
         from models.question_parameter.question_parameter import QuestionParameter
+        # The subject is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -129,11 +119,12 @@ class Question(Base):
             )
         )
         subject = session.execute(query).first()
-
+        
+        # If no subject is found, an error is returned
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
-
+        # The question is created
         new_question = Question(
             title=title,
             subject_id=subject_id,
@@ -145,8 +136,9 @@ class Question(Base):
             parametrized=parametrized,
         )
 
-        # Asignar nodos a la pregunta
+        # All the nodes are assigned to the question
         for node_id in node_ids:
+            # The node is checked to see if it exists
             query = select(Node).where(Node.id == node_id)
             node = session.execute(query).first()
             if not node:
@@ -154,14 +146,15 @@ class Question(Base):
             new_question.nodes.append(node[0])
             parent_node = node[0]
             while parent_node.parent:
+                # The node's parents are assigned as well to the question
                 new_question.nodes.append(parent_node.parent)
                 parent_node = parent_node.parent
 
+        # The question (and its associations) are added to the database
         session.add(new_question)
         session.commit()
 
-
-
+        # The answers (if any) are added to the database 
         for answer_data in answers:
             new_answer = Answer.insert_answer(
                 session=session,
@@ -171,7 +164,8 @@ class Question(Base):
             )
 
         if question_parameters is not []:
-
+            
+            # The question parameters (if any) are added to the database
             for question_parameter in question_parameters.get('items'):
                 new_question_parameter = QuestionParameter.insert_question_parameter(
                     session=session,
@@ -204,6 +198,7 @@ class Question(Base):
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
 
+        # The question is checked to belong to the current user
         user_id = get_current_user_id()
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
@@ -224,32 +219,38 @@ class Question(Base):
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
 
+        # The question is checked to belong to the current user
         user_id = get_current_user_id()
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The question is checked to see if it has associated resources
         if res[0].connected == True:
             abort(401, "La pregunta tiene recursos asociados.")
 
-
+        # The question's answers (if any) are deleted
         query = delete(Answer).where(Answer.question_id == id)
         session.execute(query)
         session.commit()
-
+        
+        # The question's associations with nodes are deleted
         query = delete(node_question_association).where(node_question_association.c.question_id == id)
         session.execute(query)
         session.commit()
 
+        # The question's parameters (if any) are deleted
         query = delete(QuestionParameter).where(QuestionParameter.question_id == id)
         session.execute(query)
         session.commit()
 
+        # The question is deleted
         query = delete(Question).where(Question.id == id)
         session.execute(query)
         session.commit()
 
     @staticmethod
     def get_user_questions(session, limit: int = None, offset: int = 0) -> QuestionListSchema:
+        # Only the user's questions are obtained
         current_user_id = get_current_user_id()
         query = select(Question).where(Question.created_by == current_user_id).offset(offset)
         if limit:
@@ -263,6 +264,7 @@ class Question(Base):
 
     @staticmethod
     def get_subject_questions(session, subject_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
+        # Only the user and subject's questions are obtained
         current_user_id = get_current_user_id()
         query = select(Question).where(
             and_(
@@ -292,10 +294,12 @@ class Question(Base):
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
 
+        # The question is checked to belong to the current user
         user_id = get_current_user_id()
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The question's answers (if any) are added
         query = select(Answer).where(Answer.question_id == id)
         items = session.execute(query).scalars().all()
 
@@ -304,11 +308,13 @@ class Question(Base):
         answers = AnswerListSchema()
         answers = answers.dump({"items": items, "total": total})
 
+        # The question's parameters (if any) are added
         query = select(QuestionParameter).where(QuestionParameter.question_id == id).order_by(QuestionParameter.group, QuestionParameter.position)
         items2 = session.execute(query).scalars().all()
 
         total2 = session.query(QuestionParameter).count()
 
+        # The related nodes are added
         query = select(Node.id).join(node_question_association).where(node_question_association.c.question_id == id)
         node_ids = session.execute(query).scalars().all()
 
@@ -342,16 +348,19 @@ class Question(Base):
         query = select(Question).where(Question.id == id)
         res = session.execute(query).first()
 
+        # The question is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The question is checked to be active
         if res[0].active == False:
             abort(418, "La pregunta ya estaba desactivada")
 
         res[0].active = False
 
         session.commit()
+
 
         query = select(Answer).where(Answer.question_id == id)
         items = session.execute(query).scalars().all()
@@ -377,6 +386,7 @@ class Question(Base):
 
     @staticmethod
     def get_questions_for_exam(session, exam_id: int) -> FullQuestionListSchema:
+        # Ony the exam's questions are returned
         query = select(Question).join(exam_question_association).where(exam_question_association.c.exam_id == exam_id)
         items = session.execute(query).scalars().all()
 
@@ -409,12 +419,14 @@ class Question(Base):
         from models.question_parameter.question_parameter import QuestionParameter
         user_id = get_current_user_id()
 
+        # The question is checked to belong to the current user
         query = select(Question).where(and_(Question.id == question_id, Question.created_by == user_id))
         question = session.execute(query).scalar_one_or_none()
 
         if not question:
             abort(404, "Pregunta no encontrada o no tienes permisos para editarla.")
 
+        # The new values for the questions are given
         question.title = title
         question.subject_id = subject_id
         question.difficulty = difficulty
@@ -423,6 +435,7 @@ class Question(Base):
         question.active = active
         question.parametrized = question_parameters_data is not []
 
+        # To be more general, all the Node-Question relations are deleted to add the new ones
         query = delete(node_question_association).where(node_question_association.c.question_id == question_id)
         session.execute(query)
         session.commit()
@@ -439,6 +452,7 @@ class Question(Base):
                 question.nodes.append(parent_node.parent)
                 parent_node = parent_node.parent
 
+        # To be more general, all the question's parameters (if any) are deleted to add the new ones (if any)
         session.query(QuestionParameter).filter_by(question_id=question_id).delete()
         for param in question_parameters_data:
             new_param = QuestionParameter(
@@ -450,6 +464,7 @@ class Question(Base):
             )
             session.add(new_param)
 
+        # To be more general, all the question's answers (if any) are deleted to add the new ones (if any)
         session.query(Answer).filter_by(question_id=question_id).delete()
         for answer in answers_data:
             new_answer = Answer(
@@ -486,14 +501,14 @@ class Question(Base):
     ) -> FullQuestionListSchema:
         from models.answer.answer import Answer
         try:
-            # Intenta leer el archivo CSV con diferentes codificaciones
+            # The file is tried to be read with different encodings
             try:
                 df = pd.read_csv(file, dtype='object', encoding='utf-8')
             except UnicodeDecodeError:
                 df = pd.read_csv(file, dtype='object', encoding='latin1')
 
+            # The subject in which to add the questions is checked to belong to the current user
             user_id = get_current_user_id()
-
             query = select(Subject).where(
                 and_(
                     Subject.id == subject_id,
@@ -507,6 +522,7 @@ class Question(Base):
 
             questions = []
 
+            # For every line (question in the file), a new question is added with the values given
             for index, row in df.iterrows():
                 title = str(row['title'])
                 type = str(row['type']).lower()
@@ -521,9 +537,14 @@ class Question(Base):
                     active=True
                 )
 
+                # The questions are assigned to the root node by default
+                node = Node.get_root_node(session=session, subject_id=subject_id)
+                new_question.nodes.append(node)
+
                 session.add(new_question)
                 session.commit()
 
+                # If any answers are given, they are added as well
                 answer_index = 1
                 while f'answer{answer_index}' in row:
                     answer_text = row.get(f'answer{answer_index}')
@@ -568,6 +589,7 @@ class Question(Base):
     def insert_questions_from_aiken(session, file, subject_id: int, difficulty: int = 1,
                                     time: int = 1) -> FullQuestionListSchema:
         from models.answer.answer import Answer
+        # The subject in which to add the questions is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -580,13 +602,18 @@ class Question(Base):
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
+        # A regular expression is created to section every question to add them separately
         questions = []
         question_pattern = re.compile(r"^(.*?)\n([A-Z]\..*?)\nANSWER:\s([A-Z])", re.MULTILINE | re.DOTALL)
 
         try:
+            # The file is tried to be read in the encoding in which the file should be written
             content = file.read().decode('utf-8')
+
+            # Every matching pattern is obtained
             matches = question_pattern.findall(content)
 
+            # Each matching pattern is a question, so the data is obtained
             for match in matches:
                 title = match[0].strip()
                 answers = match[1].strip().split('\n')
@@ -602,6 +629,7 @@ class Question(Base):
                     active=True
                 )
 
+                # The questions are assigned to the root node by default
                 node = Node.get_root_node(session=session, subject_id=subject_id)
                 new_question.nodes.append(node)
 

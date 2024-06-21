@@ -41,14 +41,14 @@ class Subject(Base):
     @hybrid_property
     def question_number(self):
         """
-        Calcula el número total de preguntas para esta asignatura.
+        Calculates the total number of questions of a subject.
         """
         return sum(len(question_set) for question_set in [self.questions, self.nodes])
 
     @question_number.expression
     def question_number(cls):
         """
-        Expresión SQLAlchemy para calcular el número total de preguntas para esta asignatura.
+        SQLAlchemy to calculate the total number of questions of a subject.
         """
 
         from models.question import Question
@@ -61,8 +61,11 @@ class Subject(Base):
             name: str,
     ) -> SubjectSchema:
         from models.node.node import Node
+        
+        # The subject is created and added to the database, since it has no attributes to be checked
         new_subject = Subject(created_by=get_current_user_id(), name=name)
 
+        # The hierarchy's root node is created with the subject name
         session.add(new_subject)
         session.commit()
         new_node = Node(
@@ -83,7 +86,8 @@ class Subject(Base):
     ) -> SubjectSchema:
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
-
+        
+        # The subject is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
@@ -105,45 +109,56 @@ class Subject(Base):
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
 
+        # The subject is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The question IDs of the subject are obtained to delete the instances of the tables that contain them
         question_ids_query = select(Question.id).where(Question.subject_id == id)
         question_ids = [q[0] for q in session.execute(question_ids_query).fetchall()]
 
+        # The entries in the Exam-Question table that regard the subject's objects are deleted
         query = delete(exam_question_association).where(exam_question_association.c.question_id.in_(question_ids))
         session.execute(query)
         session.commit()
 
+        # The subject's results are deleted
         query = delete(Result).where(Result.question_id.in_(question_ids))
         session.execute(query)
         session.commit()
 
+        # The subject's exams are deleted
         query = delete(Exam).where(Exam.subject_id == id)
         session.execute(query)
         session.commit()
 
+        # The entries in the Node-Question table that regard the subject's objects are deleted
         query = delete(node_question_association).where(node_question_association.c.question_id.in_(question_ids))
         session.execute(query)
         session.commit()
 
+        # The subject's answers are deleted
         query = delete(Answer).where(Answer.question_id.in_(question_ids))
         session.execute(query)
         session.commit()
-
+        
+        # The subject's question parameters are deleted
         query = delete(QuestionParameter).where(QuestionParameter.question_id.in_(question_ids))
         session.execute(query)
         session.commit()
 
+        # The subject's questions are deleted
         query = delete(Question).where(Question.subject_id == id)
         session.execute(query)
         session.commit()
-
+        
+        # The subject's nodes are deleted
         query = delete(Node).where(Node.subject_id == id)
         session.execute(query)
         session.commit()
 
+        # The subject is deleted
         query = delete(Subject).where(Subject.id == id)
         session.execute(query)
         session.commit()
@@ -154,12 +169,11 @@ class Subject(Base):
         current_user_id = get_current_user_id()
         query = session.query(Subject).filter(Subject.created_by == current_user_id).offset(offset)
 
-        # Subconsulta para obtener el número total de preguntas por asignatura
+        # Subquery to obtain the total question number of each subject
         question_number_subquery = session.query(func.count(Question.id)). \
             filter(Question.subject_id == Subject.id). \
             label("question_number")
 
-        # Unimos la subconsulta para obtener el número total de preguntas por asignatura
         query = query.add_columns(question_number_subquery)
 
         if limit:
@@ -169,7 +183,7 @@ class Subject(Base):
         total = 0
         for item, question_number in query:
             item_dict = item.__dict__
-            item_dict['question_number'] = question_number or 0  # Si no hay preguntas, establece el valor en 0
+            item_dict['question_number'] = question_number or 0  
             items.append(item_dict)
             total += 1
 
@@ -185,10 +199,12 @@ class Subject(Base):
         query = select(Subject).where(Subject.id == id)
         res = session.execute(query).first()
 
+        # The subject is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The name of the subject is changed
         res[0].name = name
 
         session.commit()

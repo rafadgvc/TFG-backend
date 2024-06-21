@@ -68,7 +68,10 @@ class User(Base):
             password: str,
     ) -> FullUserSchema:
 
+        # Password is hashed to increase security
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), PASSWORD_SALT).decode('utf-8')
+
+        # A new user instance is created and added to the database
         new_user = User(email=email, name=name, password=hashed_password)
         session.add(new_user)
         session.commit()
@@ -80,6 +83,8 @@ class User(Base):
             session,
             id: int
     ) -> FullUserSchema:
+
+        # The user is obtained by its ID
         query = select(User).where(User.id == id)
         res = session.execute(query).first()
         return res[0]
@@ -89,6 +94,8 @@ class User(Base):
             session,
             email: str
     ) -> FullUserSchema:
+
+        # The user is obtained by its email
         query = select(User).where(User.email == email)
         res = session.execute(query).first()
         return res[0]

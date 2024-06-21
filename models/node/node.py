@@ -44,30 +44,29 @@ class Node(Base):
     @hybrid_property
     def leaf(self):
         """
-        Calcula si el nodo tiene hijos.
+        Calculates if the nodes has no children.
         """
         return len(self.children) == 0
 
     @leaf.expression
     def leaf(cls):
         """
-        Expresión SQLAlchemy para calcular si el nodo tiene hijos.
+        Expresión SQLAlchemy to calculate if the nodes has no children.
         """
         return func.count(cls.children) == 0
 
     @hybrid_property
     def root(self):
         """
-        Calcula si el nodo es raíz.
+        Calculates if the node is a root node.
         """
         return self.parent_id is None
 
     @root.expression
     def root(cls):
         """
-        Expresión SQLAlchemy para calcular si el nodo no tiene padre.
+        Expresión SQLAlchemy to calculate if the node is a root node.
         """
-        # Expresión para la base de datos: verifica si el padre es nulo
         return cls.parent_id == null()
 
     @staticmethod
@@ -86,9 +85,11 @@ class Node(Base):
         )
         subject = session.execute(query).first()
 
+        # The subject is checked to belong to the current user
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
+        # The node is checked to have an existing parent
         if parent_id is not None:
             query = select(Node).where(
                 and_(
@@ -100,7 +101,8 @@ class Node(Base):
 
             if not parent:
                 abort(400, "El nodo superior con el ID no ha sido encontrado.")
-
+        
+        # The node is added to the database
         new_node = Node(name=name, subject_id=subject_id, created_by=user_id, parent_id=parent_id)
         session.add(new_node)
         session.commit()
@@ -115,6 +117,7 @@ class Node(Base):
         query = select(Node).where(Node.id == id)
         res = session.execute(query).first()
 
+        # The node is checked to belong to the current user
         user_id = get_current_user_id()
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
@@ -131,16 +134,23 @@ class Node(Base):
                 Node.parent_id == null()
             )
         )
-
+        
         root_node = session.execute(query).scalars().first()
 
         if not root_node:
             abort(404, "No se encontró un nodo raíz para la asignatura con el ID proporcionado.")
 
+        # The node is checked to belong to the current user
+        user_id = get_current_user_id()
+        if root_node.created_by != user_id:
+            abort(401, "No tienes acceso a este recurso.")
+        
         return root_node
 
     @staticmethod
     def get_subject_nodes(session, subject_id: int, limit: int = None, offset: int = 0) -> NodeListSchema:
+        
+        # The nodes are checked to see if they belong to the current user
         current_user_id = get_current_user_id()
         query = select(Node).where(
             and_(
@@ -158,55 +168,21 @@ class Node(Base):
         return schema.dump({"items": items, "total": total})
 
     @staticmethod
-    def get_questions_of_node(session, node_id: int, limit: int = None, offset: int = 0) -> FullQuestionListSchema:
-        from models.question.question import Question
-        from models.answer.answer import Answer
-        current_user_id = get_current_user_id()
-        query = select(Question).distinct().join(Answer).where(
-            and_(
-                Question.created_by == current_user_id,
-                Question.node_id == node_id
-            )
-        ).offset(offset)
-        if limit:
-            query = query.limit(limit)
-        items = session.execute(query).scalars().all()
-
-        total = session.query(Node).count()
-
-        questions_with_responses = []
-
-        for question in items:
-            answers = question.answers
-            total_answers = len(answers)
-            question_dict = {
-                "id": question.id,
-                "title": question.title,
-                "subject_id": question.subject_id,
-                "node_id": question.node_id,
-                "time": question.time,
-                "difficulty": question.difficulty,
-                "type": question.type,
-                "answers": {"items": answers, "total": total_answers}
-            }
-            questions_with_responses.append(question_dict)
-
-        schema = FullQuestionListSchema()
-        return schema.dump({"items": questions_with_responses, "total": total})
-
-    @staticmethod
     def update_node(
             session,
             name: str,
             id: int
     ) -> NodeSchema:
+        
         query = select(Node).where(Node.id == id)
         res = session.execute(query).first()
 
+        # The node is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The node's name is changed
         res[0].name = name
 
         session.commit()
@@ -220,18 +196,15 @@ class Node(Base):
             session,
             id: int
     ) -> None:
-        from models.question.question import Question
         query = select(Node).where(Node.id == id)
         res = session.execute(query).first()
 
+        # The node is checked to belong to the current user
         current_user_id = get_current_user_id()
         if res[0].created_by != current_user_id:
             abort(401, "No tienes acceso a este recurso.")
 
-        query = delete(Question).where(Question.node_id == id)
-        session.execute(query)
-        session.commit()
-
+        # The node is deleted from the database
         query = delete(Node).where(Node.id == id)
         session.execute(query)
         session.commit()

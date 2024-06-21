@@ -11,7 +11,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from flask import abort
-from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_, DateTime
+from sqlalchemy import Integer, String, ForeignKey, delete, and_, func, select, distinct, not_, DateTime, true
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, Mapped, mapped_column, joinedload, subqueryload
 from typing import Set, List
@@ -51,14 +51,14 @@ class Exam(Base):
     @hybrid_property
     def connected(self):
         """
-        Calcula si el examen tiene resultados asociados.
+        Calculates if the exam has associated results.
         """
         return len(self.results) > 0
 
     @connected.expression
     def connected(cls):
         """
-        Expresión SQLAlchemy para calcular si el examen tiene resultados asociados.
+        SQLAlchemy expression to calculate if the exam has associated results.
         """
         from models.result.result import Result
         return select([func.count(Result.id)]).where(Result.exam_id == cls.id).label("connected") > 0
@@ -66,7 +66,7 @@ class Exam(Base):
     @hybrid_property
     def difficulty(self):
         """
-        Calcula el nivel medio de dificultad de las preguntas en el examen.
+        Calculates the average estimated difficulty of the exam's questions.
         """
         total_difficulty = sum(question.difficulty for question in self.questions)
         return total_difficulty / len(self.questions) if self.questions else 0
@@ -74,7 +74,7 @@ class Exam(Base):
     @difficulty.expression
     def difficulty(cls):
         """
-        Expresión SQLAlchemy para calcular el nivel medio de dificultad de las preguntas en el examen.
+        SQLAlchemy to calculate the average estimated difficulty of the exam's questions.
         """
         from models.question.question import Question
         return (
@@ -86,14 +86,14 @@ class Exam(Base):
     @hybrid_property
     def time(self):
         """
-        Calcula la suma de los tiempos estimados de todas las preguntas en el examen.
+        Calculates the total estimated time of the exam's questions.
         """
         return sum(question.time for question in self.questions)
 
     @time.expression
     def time(cls):
         """
-        Expresión SQLAlchemy para calcular la suma de los tiempos estimados de todas las preguntas en el examen.
+        SQLAlchemy expression to calculate the total estimated time of the exam's questions.
         """
         from models.question.question import Question
         return (
@@ -108,14 +108,14 @@ class Exam(Base):
     @hybrid_property
     def question_number(self):
         """
-        Calcula el número total de preguntas del examen.
+        Calculates the number of questions in the exam.
         """
         return len(self.questions)
 
     @question_number.expression
     def question_number(cls):
         """
-        Expresión SQLAlchemy para calcular el número total de preguntas del examen.
+        SQLAlchemy expression to calculate the number of questions in the exam.
         """
 
         from models.question.question import Question
@@ -133,10 +133,11 @@ class Exam(Base):
             session,
             title: str,
             subject_id: int,
-            question_ids: List[int],
             questions
     ) -> FullExamSchema:
         from models.question.question import Question
+
+        # The subject is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -149,15 +150,13 @@ class Exam(Base):
         if not subject:
             abort(400, "La asignatura con el ID no ha sido encontrada.")
 
+        # The exam is created and added to the database
         new_exam = Exam(
             title=title,
             subject_id=subject_id,
             created_by=user_id,
             created_on=datetime.now()
         )
-
-
-
         session.add(new_exam)
         session.commit()
 
@@ -170,13 +169,14 @@ class Exam(Base):
                 "total": 0
             }
         }
-        # Asignar preguntas al examen
+        # The questions are associated to the exam with their belonging section
         for question in questions:
             query = select(Question).where(Question.id == question['id'])
             res = session.execute(query).first()
             if not res:
                 abort(400, f"La pregunta con el ID {question['id']} no fue encontrada.")
 
+            # If the question is parametrized and a group has been specified, it is added as well
             group = question['group'] if question.get('group') is not None else None
 
             association = exam_question_association.insert().values(
@@ -188,6 +188,7 @@ class Exam(Base):
             session.execute(association)
             session.commit()
 
+        # The questions are added to the exam data
         for question in new_exam.questions:
             question_data = Question.get_full_question(session, question.id)
             if question_data:
@@ -199,14 +200,19 @@ class Exam(Base):
     @staticmethod
     def get_exam(session, id: int) -> FullExamSchema:
         from models.question.question import Question
-        from models.associations.associations import exam_question_association  # Importa la asociación
+        from models.associations.associations import exam_question_association
 
-        query = select(Exam).where(Exam.id == id)
+        # The exam is checked to belong to the current user
+        query = select(Exam).where(
+            and_(
+                Exam.id == id,
+                Exam.created_by == get_current_user_id(),
+            )
+        )
         res = session.execute(query).first()
 
         if not res:
-            # Manejar el caso donde el examen no existe
-            return None
+            abort(400, "El examen con el ID no ha sido encontrado.")
 
 
         exam = res[0]
@@ -225,10 +231,11 @@ class Exam(Base):
             }
         }
 
+        # The questions are added to the returned data
         for question in exam.questions:
             question_data = Question.get_full_question(session, question.id)
             if question_data:
-                # Obtener el número de sección para esta pregunta
+                # Get the section number for each question
                 section_query = select(exam_question_association.c.section_id).where(
                     and_(
                         exam_question_association.c.exam_id == exam.id,
@@ -239,6 +246,7 @@ class Exam(Base):
                 if section_result:
                     question_data['section_number'] = section_result[0]
 
+                # If the question is parametrized get the selected group as well (if any)
                 group_query = select(exam_question_association.c.group).where(
                     and_(
                         exam_question_association.c.exam_id == exam.id,
@@ -253,6 +261,7 @@ class Exam(Base):
                 exam_data['questions']['items'].append(question_data)
                 exam_data['questions']['total'] += 1
 
+        # Order the exam's questions by their section number
         exam_data['questions']['items'].sort(key=lambda x: x['section_number'])
 
         return exam_data
@@ -260,6 +269,7 @@ class Exam(Base):
     @staticmethod
     def get_subject_exams(session, subject_id: int, limit: int = None, offset: int = 0) -> ExamListSchema:
         from models.question import Question
+        # The subject is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Subject).where(
             and_(
@@ -291,6 +301,7 @@ class Exam(Base):
 
         res = session.execute(query)
 
+        # Each exam is mapped as an ExamSchema
         items = []
         total = 0
         for item in query:
@@ -308,6 +319,7 @@ class Exam(Base):
             questions
     ) -> FullExamSchema:
         from models.question.question import Question
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Exam).where(
             and_(
@@ -320,7 +332,10 @@ class Exam(Base):
         if not exam:
             abort(400, "El examen con el ID no ha sido encontrada.")
 
+        # The exam's title is changed
         exam.title = title
+
+        # To be more general, all the old Exam-Question relations are deleted to add the new ones
         query = delete(exam_question_association).where(exam_question_association.c.exam_id == exam_id)
         session.execute(query)
         session.commit()
@@ -334,7 +349,6 @@ class Exam(Base):
                 "total": 0
             }
         }
-        # Asignar preguntas al examen
         for question in questions:
             query = select(Question).where(Question.id == question['id'])
             res = session.execute(query).first()
@@ -343,7 +357,6 @@ class Exam(Base):
 
             group = question['group'] if question.get('group') is not None else None
 
-            # Añadir a la asociación con la sección correspondiente
             association = exam_question_association.insert().values(
                 exam_id=exam.id,
                 question_id=question['id'],
@@ -370,6 +383,7 @@ class Exam(Base):
             time: int = None,
             difficulty: int = None,
             repeat: bool = None,
+            parametrized: bool = None,
             exclude_ids: list[int] = None,
             limit: int = None,
             offset: int = 0
@@ -377,15 +391,20 @@ class Exam(Base):
         from models.question.question import Question
         from models.associations.associations import node_question_association
         from models.question_parameter.question_parameter import QuestionParameter
+
+        # The exam is checked to belong to the current user
         current_user_id = get_current_user_id()
 
+        # All the active questions that have, at least, one association with a given node ID
         query = select(Question).join(node_question_association).where(
             and_(
                 Question.created_by == current_user_id,
+                Question.active == true(),
                 node_question_association.c.node_id.in_(node_ids)
             )
         ).offset(offset)
 
+        # If there are any questions that should not be returned, they are excluded from the query
         if exclude_ids:
             query = query.where(not_(Question.id.in_(exclude_ids)))
 
@@ -394,21 +413,26 @@ class Exam(Base):
 
         questions = session.execute(query).scalars().all()
 
+        # A key is created for each question to establish an ordering criteria
         def get_sort_key(question):
-            uses = getattr(question, 'uses', 0) if repeat else None
+            parametrized_priority = getattr(question, 'parametrized', False) if parametrized else None
+            parametrized_value = 0 if parametrized_priority else 1
             type_match = 0 if type and question.type in type else 1
             time_diff = abs(question.time - time) if time is not None else 0
             difficulty_diff = abs(question.difficulty - difficulty) if difficulty is not None else 0
+            uses = getattr(question, 'uses', 0)
             random_value = random.random()
             return (
-                uses if uses is not None else float('inf'),
+
+                parametrized_value,
                 type_match,
                 time_diff,
                 difficulty_diff,
-                question.uses if hasattr(question, 'uses') else float('inf'),
+                uses if uses is not None else float('inf'),
                 random_value
             )
 
+        # The questions are sorted using the sorting key
         questions.sort(key=get_sort_key)
 
         if question_number is not None:
@@ -433,7 +457,7 @@ class Exam(Base):
             }
         )
             if question.parametrized:
-                # Obtener los parámetros de la pregunta
+                # If the question has parameters, they are included in the returning data
                 parameters = session.query(QuestionParameter).filter_by(question_id=question.id).all()
                 parameter_schema = QuestionParameterListSchema()
                 parameters_data = parameter_schema.dump({"items": parameters})
@@ -445,19 +469,24 @@ class Exam(Base):
     @staticmethod
     def delete_exam(session, exam_id: int):
         from models.associations.associations import exam_question_association
+
+        # The exam is checked to belong to the current user
         query = select(Exam).where(Exam.id == exam_id)
         res = session.execute(query).first()
         if not res:
             abort(400, "El examen no ha sido encontrado.")
         exam_data = Exam.get_exam(session, exam_id)
+
+        # The exam is checked to not have associated results
         if exam_data['connected'] == True:
             abort(401, "El examen tiene resultados asociados.")
 
-
+        # The Exam-Question associations are deleted
         query = delete(exam_question_association).where(exam_question_association.c.exam_id == exam_id)
         session.execute(query)
         session.commit()
 
+        # The exam is deleted
         query = delete(Exam).where(Exam.id == exam_id)
         session.execute(query)
         session.commit()
@@ -465,35 +494,45 @@ class Exam(Base):
 
     @staticmethod
     def export_exam_to_aiken(session, exam_id: int, output_file: str):
+
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
-        # Obtener el examen por ID
         exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
 
         if not exam:
-            raise ValueError("El examen no existe.")
+            abort(400, "El examen no ha sido encontrado.")
 
         exam_data = Exam.get_exam(session, exam_id)
         questions = exam_data['questions']['items']
         question_number = 0
 
-
+        # The new file is opened
         with open(output_file, 'w', encoding='utf-8') as file:
             for question in questions:
+                # Only the test questions are taken into consideration
                 if question['type'] == 'test':
                     question_number += 1
+
+                    # The questions parameters (if any) are obtained
                     raw_parameters = [{
                         'value': param['value'], 'group': param['group']
                     } for param in question.get('question_parameters', {}).get('items', [])]
                     parameters = []
+
+                    # If there are parameters, the previously specified group is selected
                     if raw_parameters != parameters:
                         if question['group'] is not None:
                             random_group = question['group']
                         else:
+
+                            # If no group was specified, a random group is selected
                             random_param = random.choice(raw_parameters)
                             random_group = random_param['group']
                         for param in raw_parameters:
                             if param['group'] == random_group:
                                 parameters.append(param['value'])
+
+                        # The question title is replaced with the parameters' values if needed
                         question_title = replace_parameters(question['title'], parameters)
                     else:
                         question_title = question['title']
@@ -502,10 +541,13 @@ class Exam(Base):
                     answer_letter = 'A'
                     correct_answer_letter = None
 
+                    # Since the answers must have a question with 100% points, while the answers are written
+                    # the correct one is searched
                     if 'answers' in question and question['type'] == 'test':
                         answers = question['answers']['items']
                         for answer in answers:
                             if raw_parameters != parameters:
+                                # The answer content is replaced with the parameters' values if needed
                                 answer_body = replace_parameters(answer['body'], parameters)
                             else:
                                 answer_body = answer['body']
@@ -522,17 +564,19 @@ class Exam(Base):
     @staticmethod
     def export_exam_to_pdf(session, exam_id, output_file):
         from models.subject.subject import Subject
+        # The exam is checked to belong to the current user
         exam_data = Exam.get_exam(session, exam_id)
 
         if not exam_data:
-            raise ValueError("El examen no existe.")
+            abort(400, "El examen no ha sido encontrado.")
 
         subject_data = Subject.get_subject(session, exam_data['subject_id'])
 
+        # The new file is created and opened
         doc = SimpleDocTemplate(output_file, pagesize=letter)
         styles = getSampleStyleSheet()
 
-        # Estilos personalizados
+        # Personalized styles are created
         right_aligned_style = ParagraphStyle(
             name='RightAligned',
             parent=styles['Normal'],
@@ -545,7 +589,7 @@ class Exam(Base):
             fontName='Helvetica-Bold'
         )
 
-        # Encabezado
+        # The heading is established
         exam_title = exam_data['title']
         if exam_data['month'] >= 9:
             year1 = exam_data['year']
@@ -558,10 +602,9 @@ class Exam(Base):
         header_text = f"{subject_name}   -   Curso {year1}-{year2}<br/>{exam_title}"
         header = Paragraph(header_text, right_aligned_style)
 
-        # Línea para Nombre y Apellidos
         name_line = Paragraph("Nombre y Apellidos: _______________________________________________________________", bold_style)
 
-        # Contenido
+        # The actual content of the exam is established
         content = [header, Spacer(1, 50), name_line, Spacer(1, 12)]
         questions = exam_data['questions']['items']
         question_number = 0
@@ -570,36 +613,47 @@ class Exam(Base):
             question_number += 1
 
             section = question['section_number']
+            # If a new section, a line saying so is added
             if section != current_section:
                 current_section = section
                 section_title = f"Sección {current_section}"
                 content.append(Paragraph(section_title, styles['Heading2']))
                 content.append(Spacer(1, 10))
 
+            # The questions parameters (if any) are obtained
             raw_parameters = [{
                 'value': param['value'], 'group': param['group']
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
+
+            # If there are parameters, the previously specified group is selected
             if raw_parameters != parameters:
                 if question['group'] is not None:
                     random_group = question['group']
                 else:
+
+                    # If no group was specified, a random group is selected
                     random_param = random.choice(raw_parameters)
                     random_group = random_param['group']
                 for param in raw_parameters:
                     if param['group'] == random_group:
                         parameters.append(param['value'])
+
+                # The question title is replaced with the parameters' values if needed
                 question_title = replace_parameters(question['title'], parameters)
             else:
                 question_title = question['title']
             question_text = f"<b>{question_number}. {question_title}</b><br/>"
             content.append(Paragraph(question_text, styles['Normal']))
+
+            # The answers (if any and if needed) are added
             if 'answers' in question and question['type'] == 'test':
                 answers = question['answers']['items']
                 answer_letter = 'A'
 
                 for answer in answers:
 
+                    # The answer content is replaced with the parameters' values if needed
                     if raw_parameters != parameters:
                         answer_body = replace_parameters(answer['body'], parameters)
                     else:
@@ -615,44 +669,56 @@ class Exam(Base):
     @staticmethod
     def export_exam_to_gift(session, exam_id: int, output_file: str):
         from models.answer.answer import Answer
+
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
-        # Obtener el examen por ID
         exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
 
         if not exam:
-            raise ValueError("El examen no existe.")
+            abort(400, "El examen no ha sido encontrado.")
 
         exam_data = Exam.get_exam(session, exam_id)
 
         questions = exam_data['questions']['items']
         question_number = 0
 
+        # The new file is opened
         with open(output_file, 'w', encoding='utf-8') as file:
             for question in questions:
                 question_number += 1
+
+                # The questions parameters (if any) are obtained
                 raw_parameters = [{
                     'value': param['value'], 'group': param['group']
                 } for param in question.get('question_parameters', {}).get('items', [])]
                 parameters = []
+
+                # If there are parameters, the previously specified group is selected
                 if raw_parameters != parameters:
                     if question['group'] is not None:
                         random_group = question['group']
                     else:
+
+                        # If no group was specified, a random group is selected
                         random_param = random.choice(raw_parameters)
                         random_group = random_param['group']
                     for param in raw_parameters:
                         if param['group'] == random_group:
                             parameters.append(param['value'])
+
+                    # The question title is replaced with the parameters' values if needed
                     question_title = replace_parameters(question['title'], parameters)
                 else:
                     question_title = question['title']
-                # Escribimos la pregunta
+
+                # The title is added to the file
                 file.write(f"::Question {question['id']}::{question_title} {{\n")
 
-                # Obtener las respuestas
+                # The answers (if any and if needed) are added
                 if 'answers' in question and question['type'] == 'test':
                     answers = question['answers']['items']
                     for answer in answers:
+                        # The answer content is replaced with the parameters' values if needed
                         if raw_parameters != parameters:
                             answer_body = replace_parameters(answer['body'], parameters)
                         else:
@@ -664,38 +730,52 @@ class Exam(Base):
     @staticmethod
     def export_exam_to_moodlexml(session, exam_id: int, output_file: str):
         from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
         exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
 
         if not exam:
-            raise ValueError("El examen no existe.")
+            abort(400, "El examen no ha sido encontrado.")
 
         exam_data = Exam.get_exam(session, exam_id)
         questions = exam_data['questions']['items']
 
+        # A new quiz element is created
         quiz = Element('quiz')
 
         for question in questions:
+
+            # The questions parameters (if any) are obtained
             raw_parameters = [{
                 'value': param['value'], 'group': param['group']
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
+
+            # If there are parameters, the previously specified group is selected
             if raw_parameters != parameters:
                 if question['group'] is not None:
                     random_group = question['group']
                 else:
+
+                    # If no group was specified, a random group is selected
                     random_param = random.choice(raw_parameters)
                     random_group = random_param['group']
                 for param in raw_parameters:
                     if param['group'] == random_group:
                         parameters.append(param['value'])
+
+                # The question title is replaced with the parameters' values if needed
                 question_title = replace_parameters(question['title'], parameters)
             else:
                 question_title = question['title']
+
+            # The type of the question is added
             if question['type'] == 'test':
                 question_element = SubElement(quiz, 'question', type='multichoice')
             else:
                 question_element = SubElement(quiz, 'question', type='essay')
+
+            # The title is added to the question
             name = SubElement(question_element, 'name')
             text = SubElement(name, 'text')
             text.text = question_title
@@ -704,8 +784,11 @@ class Exam(Base):
             text = SubElement(question_text, 'text')
             text.text = question['title']
 
+            # The answers (if any and if needed) are added
             if 'answers' in question and question['type'] == 'test':
                 for answer in question['answers']['items']:
+
+                    # The answer content is replaced with the parameters' values if needed
                     if raw_parameters != parameters:
                         answer_body = replace_parameters(answer['body'], parameters)
                     else:
@@ -719,25 +802,29 @@ class Exam(Base):
                 text.text = ''
 
         tree = ElementTree(quiz)
+
+        # A file is created and the quiz is added to it
         tree.write(output_file, encoding='utf-8', xml_declaration=True)
 
     @staticmethod
     def export_exam_to_odt(session, exam_id: int, output_file: str):
+
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
         exam = session.query(Exam).filter(and_(Exam.id == exam_id, Exam.created_by == user_id)).one_or_none()
 
         if not exam:
-            raise ValueError("El examen no existe.")
+            abort(400, "El examen no ha sido encontrado.")
 
         exam_data = Exam.get_exam(session, exam_id)
         subject_data = session.query(Subject).filter(Subject.id == exam_data['subject_id']).one()
 
         questions = exam_data['questions']['items']
 
-        # Crear un nuevo documento ODT
+        # The new file is created
         doc = OpenDocumentText()
 
-        # Crear estilos
+        # Personalized styles are created
         h1_style = Style(name="Heading1", family="paragraph")
         h1_style.addElement(TextProperties(attributes={'fontsize': "24pt", 'fontweight': "bold"}))
         doc.styles.addElement(h1_style)
@@ -759,6 +846,7 @@ class Exam(Base):
         small_right_align_style.addElement(ParagraphProperties(attributes={'textalign': "right"}))
         doc.styles.addElement(small_right_align_style)
 
+        # The heading is established
         exam_title = exam_data['title']
         if exam_data['month'] >= 9:
             year1 = exam_data['year']
@@ -788,7 +876,7 @@ class Exam(Base):
 
         doc.text.addElement(P(text=""))
 
-        # Contenido del examen
+        # The actual content of the exam is established
         question_number = 0
         current_section = None
 
@@ -796,6 +884,8 @@ class Exam(Base):
             question_number += 1
 
             section = question.get('section_number')
+
+            # If a new section, a line saying so is added
             if section != current_section:
                 current_section = section
                 section_title = f"Sección {current_section}"
@@ -803,53 +893,60 @@ class Exam(Base):
                 doc.text.addElement(h2)
                 doc.text.addElement(P(text=""))
 
+            # The questions parameters (if any) are obtained
             raw_parameters = [{
                 'value': param['value'], 'group': param['group']
             } for param in question.get('question_parameters', {}).get('items', [])]
             parameters = []
+
+            # If there are parameters, the previously specified group is selected
             if raw_parameters != parameters:
                 if question['group'] is not None:
                     random_group = question['group']
                 else:
+
+                    # If no group was specified, a random group is selected
                     random_param = random.choice(raw_parameters)
                     random_group = random_param['group']
                 for param in raw_parameters:
                     if param['group'] == random_group:
                         parameters.append(param['value'])
+
+                # The question title is replaced with the parameters' values if needed
                 question_title = replace_parameters(question['title'], parameters)
             else:
                 question_title = question['title']
 
+            # The question title is added to the document
             question_text = f"{question_number}. {question_title}"
             p = P(stylename=p_style, text=question_text)
             doc.text.addElement(p)
 
+            # The answers (if any and if needed) are added
             if 'answers' in question and question['type'] == 'test':
                 answers = question['answers']['items']
                 answer_letter = 'A'
                 for answer in answers:
+
+                    # The answer content is replaced with the parameters' values if needed
                     if raw_parameters != parameters:
                         answer_body = replace_parameters(answer['body'], parameters)
                     else:
                         answer_body = answer['body']
+
+                    # The answer content is added to the document
                     answer_text = f"{answer_letter}. {answer_body}"
                     p = P(stylename=p_style, text=answer_text)
                     doc.text.addElement(p)
                     answer_letter = chr(ord(answer_letter) + 1)
             doc.text.addElement(P(text=""))
 
-        # Guardar el documento
+        # The document is saved
         doc.save(output_file)
 
     @staticmethod
     def get_exam_questions(session, subject_id: int, exam_ids: list[int]):
-        """
-        Devuelve las preguntas de los exámenes seleccionados.
-        """
-        from models.question.question import Question
-        from models.associations.associations import exam_question_association
-
-        # Query para obtener los exámenes recientes de una asignatura específica
+        # The selected exams are obtained
         exams_query = (
             select(Exam)
             .where(
@@ -863,6 +960,7 @@ class Exam(Base):
         exams = session.execute(exams_query).scalars().all()
 
         questions = []
+        # Each exam's questions are added to the returned data
         for exam in exams:
             for question in exam.questions:
                 question_dict = question.__dict__.copy()

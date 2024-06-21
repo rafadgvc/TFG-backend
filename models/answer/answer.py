@@ -33,6 +33,7 @@ class Answer(Base):
             question_id: int,
             points: int
     ) -> QuestionSchema:
+        # The question is checked to belong to the current user
         user_id = get_current_user_id()
         query = select(Question).where(
             and_(
@@ -45,52 +46,10 @@ class Answer(Base):
         if not question:
             abort(400, "La pregunta con el ID proporcionado no ha sido encontrada.")
 
-
+        # The answer is created and added to the database
         new_answer = Answer(body=body, question_id=question_id, created_by=user_id, points=points)
         session.add(new_answer)
         session.commit()
         schema = AnswerSchema().dump(new_answer)
         return schema
-
-    @staticmethod
-    def get_answer(
-            session,
-            id: int
-    ) -> AnswerSchema:
-        query = select(Answer).where(Answer.id == id)
-        res = session.execute(query).first()
-
-        user_id = get_current_user_id()
-        if res[0].created_by != user_id:
-            abort(401, "No tienes acceso a este recurso.")
-
-        return res[0]
-
-    @staticmethod
-    def delete_answer(
-            session,
-            id: int
-    ) -> None:
-        query = select(Answer).where(Answer.id == id)
-        res = session.execute(query).first()
-
-        user_id = get_current_user_id()
-        if res[0].created_by != user_id:
-            abort(401, "No tienes acceso a este recurso.")
-
-        query = delete(Answer).where(Answer.id == id)
-        session.execute(query)
-        session.commit()
-
-    @staticmethod
-    def get_question_answer(session, question_id: int, limit: int = None, offset: int = 0) -> QuestionListSchema:
-        query = select(Answer).where(Answer.question_id == question_id).offset(offset)
-        if limit:
-            query = query.limit(limit)
-        items = session.execute(query).scalars().all()
-
-        total = session.query(Answer).count()
-
-        schema = AnswerListSchema()
-        return schema.dump({"items": items, "total": total})
 

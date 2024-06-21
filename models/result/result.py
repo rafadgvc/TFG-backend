@@ -40,7 +40,7 @@ class Result(Base):
         from models.associations.associations import exam_question_association
         from models.result.result_schema import ResultSchema
         from models.exam.exam import Exam
-
+        # The exam is checked to belong to be associated to the question
         user_id = get_current_user_id()
         query = select(Exam).join(exam_question_association).where(
             and_(
@@ -81,11 +81,12 @@ class Result(Base):
     def insert_results_from_csv(session, file) -> List[ResultSchema]:
 
         try:
-
+            # The file is opened
             df = pd.read_csv(file, dtype='object')
 
             results = []
             for index, row in df.iterrows():
+                # For each result (row), its data is obtained and inserted as a new result
                 question_id = int(row['question_id'])
                 exam_id = int(row['exam_id'])
                 points = int(row['points'])
@@ -109,6 +110,7 @@ class Result(Base):
     def delete_results_of_exam(session, exam_id: int):
         from models.exam.exam import Exam
 
+        # The exam is checked to belong to the current user
         query = select(Exam).where(Exam.id == exam_id)
         res = session.execute(query).first()
 
@@ -116,6 +118,7 @@ class Result(Base):
         if res[0].created_by != user_id:
             abort(401, "No tienes acceso a este recurso.")
 
+        # The results belonging to the exam are deleted
         query = delete(Result).where(Result.exam_id == exam_id)
         session.execute(query)
         session.commit()
@@ -126,6 +129,7 @@ class Result(Base):
         from models.exam.exam import Exam
         from models.associations.associations import exam_question_association
 
+        # The exam is checked to belong to the current user
         user_id = get_current_user_id()
 
         query = (

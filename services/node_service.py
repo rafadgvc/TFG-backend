@@ -43,16 +43,6 @@ def add_node(node_data):
     except Exception as e:
         abort(400, message=str(e))
 
-@blp.route('/questions/<int:id>', methods=["GET"])
-@jwt_required()
-@blp.response(200, FullQuestionListSchema)
-def get_questions_of_node(id):
-    """ Returns the list of questions that a node has
-    """
-    return Node.get_questions_of_node(
-        session=SESSION,
-        node_id=id,
-        )
 
 @blp.route('/list/<int:id>', methods=["GET"])
 @jwt_required()
