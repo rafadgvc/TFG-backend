@@ -44,7 +44,6 @@ def add_exam(exam_data):
             session=SESSION,
             title=exam.get('title'),
             subject_id=exam.get('subject_id'),
-            question_ids=question_ids,
             questions=exam.get('questions').get('items'),
         )
 
